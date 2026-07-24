@@ -1,0 +1,1469 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Life OS | نظام إدارة الحياة اليومية</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2563EB">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Life OS">
+<link rel="icon" href="icons/favicon.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --primary:#2563EB; --primary-l:#3B82F6; --primary-d:#1D4ED8;
+  --success:#22C55E; --warning:#F59E0B; --danger:#EF4444; --purple:#7C3AED;
+  --bg:#F8FAFC; --card:#FFFFFF; --text:#111827; --text-dim:#6B7280;
+  --border:#E5E7EB; --radius:18px; --shadow:0 4px 20px rgba(15,23,42,.06);
+  --shadow-lg:0 12px 32px rgba(15,23,42,.10);
+}
+[data-theme="dark"]{
+  --bg:#0F172A; --card:#161F32; --text:#F1F5F9; --text-dim:#94A3B8; --border:#243044;
+  --shadow:0 4px 20px rgba(0,0,0,.3); --shadow-lg:0 12px 32px rgba(0,0,0,.4);
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+body{font-family:'Cairo',sans-serif; background:var(--bg); color:var(--text); transition:.25s;}
+::-webkit-scrollbar{width:8px; height:8px;}
+::-webkit-scrollbar-thumb{background:var(--border); border-radius:10px;}
+button{font-family:inherit; cursor:pointer; border:none;}
+input,select,textarea{font-family:inherit; border:1px solid var(--border); background:var(--bg); color:var(--text); border-radius:12px; padding:10px 14px; outline:none; transition:.2s;}
+input:focus,select:focus,textarea:focus{border-color:var(--primary); box-shadow:0 0 0 3px rgba(37,99,235,.12);}
+.app{display:flex; min-height:100vh;}
+
+/* SIDEBAR */
+.sidebar{width:260px; background:var(--card); border-left:1px solid var(--border); padding:20px 14px; position:fixed; top:0; right:0; bottom:0; overflow-y:auto; z-index:50; transition:.25s;}
+.brand{display:flex; align-items:center; gap:10px; padding:10px 8px 22px;}
+.brand .logo{width:40px; height:40px; border-radius:12px; background:linear-gradient(135deg,var(--primary),var(--purple)); display:flex; align-items:center; justify-content:center; color:#fff; font-size:18px;}
+.brand span{font-weight:800; font-size:19px;}
+.nav-group-title{font-size:11px; color:var(--text-dim); font-weight:700; text-transform:uppercase; letter-spacing:.5px; padding:14px 12px 6px;}
+.nav-item{display:flex; align-items:center; gap:12px; padding:11px 12px; border-radius:12px; color:var(--text-dim); font-weight:600; font-size:14.5px; cursor:pointer; transition:.18s; margin-bottom:2px;}
+.nav-item i{width:20px; text-align:center; font-size:15px;}
+.nav-item:hover{background:var(--bg); color:var(--text);}
+.nav-item.active{background:linear-gradient(135deg,var(--primary),var(--primary-l)); color:#fff; box-shadow:0 4px 14px rgba(37,99,235,.35);}
+
+/* MAIN */
+.main{margin-right:260px; flex:1; padding:24px 28px 60px; max-width:1400px; transition:.25s;}
+.topbar{display:flex; align-items:center; justify-content:space-between; margin-bottom:22px; gap:14px; flex-wrap:wrap;}
+.topbar h1{font-size:24px; font-weight:800;}
+.topbar-actions{display:flex; align-items:center; gap:10px;}
+.icon-btn{width:42px; height:42px; border-radius:12px; background:var(--card); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; color:var(--text-dim); font-size:16px; box-shadow:var(--shadow);}
+.icon-btn:hover{color:var(--primary);}
+.menu-toggle{display:none;}
+
+.card{background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); padding:20px; border:1px solid var(--border);}
+.grid{display:grid; gap:18px;}
+.grid-4{grid-template-columns:repeat(4,1fr);}
+.grid-3{grid-template-columns:repeat(3,1fr);}
+.grid-2{grid-template-columns:repeat(2,1fr);}
+.grid-5{grid-template-columns:repeat(5,1fr);}
+@media(max-width:1100px){.grid-4{grid-template-columns:repeat(2,1fr);} .grid-3{grid-template-columns:repeat(2,1fr);} .grid-5{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:640px){.grid-4,.grid-3,.grid-2,.grid-5{grid-template-columns:1fr;}}
+
+.section{display:none; animation:fadeIn .3s ease;}
+.section.active{display:block;}
+@keyframes fadeIn{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+.stat-card{display:flex; align-items:center; gap:14px;}
+.stat-icon{width:50px; height:50px; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:20px; color:#fff; flex-shrink:0;}
+.stat-val{font-size:22px; font-weight:800;}
+.stat-label{font-size:12.5px; color:var(--text-dim); font-weight:600;}
+
+.btn{padding:11px 18px; border-radius:12px; font-weight:700; font-size:14px; display:inline-flex; align-items:center; gap:8px; transition:.18s;}
+.btn-primary{background:linear-gradient(135deg,var(--primary),var(--primary-l)); color:#fff; box-shadow:0 6px 16px rgba(37,99,235,.3);}
+.btn-primary:hover{transform:translateY(-1px);}
+.btn-ghost{background:var(--bg); color:var(--text); border:1px solid var(--border);}
+.btn-sm{padding:7px 12px; font-size:12.5px; border-radius:9px;}
+.btn-danger{background:rgba(239,68,68,.12); color:var(--danger);}
+.btn-success{background:rgba(34,197,94,.12); color:var(--success);}
+
+.section-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; flex-wrap:wrap; gap:10px;}
+.section-head h2{font-size:19px; font-weight:800; display:flex; align-items:center; gap:10px;}
+
+.list-item{display:flex; align-items:center; gap:12px; padding:13px 14px; border:1px solid var(--border); border-radius:14px; margin-bottom:10px; background:var(--bg);}
+.list-item .grow{flex:1;}
+.list-item .title{font-weight:700; font-size:14.5px;}
+.list-item .sub{font-size:12px; color:var(--text-dim); margin-top:2px;}
+.badge{padding:4px 10px; border-radius:999px; font-size:11px; font-weight:700;}
+.badge-primary{background:rgba(37,99,235,.12); color:var(--primary);}
+.badge-success{background:rgba(34,197,94,.12); color:var(--success);}
+.badge-warning{background:rgba(245,158,11,.12); color:var(--warning);}
+.badge-danger{background:rgba(239,68,68,.12); color:var(--danger);}
+.badge-purple{background:rgba(124,58,237,.12); color:var(--purple);}
+
+.progress-bar{height:9px; background:var(--border); border-radius:99px; overflow:hidden;}
+.progress-bar .fill{height:100%; background:linear-gradient(90deg,var(--primary),var(--primary-l)); border-radius:99px; transition:.4s;}
+
+.modal-overlay{position:fixed; inset:0; background:rgba(15,23,42,.55); backdrop-filter:blur(3px); display:none; align-items:center; justify-content:center; z-index:200; padding:20px;}
+.modal-overlay.active{display:flex;}
+.modal{background:var(--card); border-radius:20px; padding:24px; width:100%; max-width:460px; max-height:88vh; overflow-y:auto; box-shadow:var(--shadow-lg);}
+.modal h3{font-size:17px; font-weight:800; margin-bottom:16px; display:flex; justify-content:space-between; align-items:center;}
+.field{margin-bottom:13px;}
+.field label{display:block; font-size:12.5px; font-weight:700; margin-bottom:6px; color:var(--text-dim);}
+.field input,.field select,.field textarea{width:100%;}
+.row2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+
+.empty{text-align:center; padding:40px 20px; color:var(--text-dim);}
+.empty i{font-size:38px; margin-bottom:12px; opacity:.4;}
+
+.toast-wrap{position:fixed; bottom:22px; left:22px; z-index:400; display:flex; flex-direction:column; gap:10px;}
+.toast{background:var(--card); border:1px solid var(--border); box-shadow:var(--shadow-lg); border-radius:14px; padding:13px 18px; font-weight:700; font-size:13.5px; display:flex; align-items:center; gap:10px; animation:slideIn .3s;}
+@keyframes slideIn{from{transform:translateX(-30px); opacity:0;} to{transform:translateX(0); opacity:1;}}
+
+.ring-wrap{position:relative; width:120px; height:120px; margin:0 auto;}
+.ring-wrap svg{transform:rotate(-90deg);}
+.ring-center{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;}
+.ring-center .pct{font-size:22px; font-weight:800;}
+.ring-center .lbl{font-size:10px; color:var(--text-dim); font-weight:600;}
+
+.tabs{display:flex; gap:6px; background:var(--bg); padding:5px; border-radius:12px; margin-bottom:16px; flex-wrap:wrap;}
+.tab{padding:9px 16px; border-radius:9px; font-weight:700; font-size:13px; color:var(--text-dim);}
+.tab.active{background:var(--card); color:var(--primary); box-shadow:var(--shadow);}
+
+.checkbox-row{display:flex; align-items:center; gap:10px; padding:12px 14px; border:1px solid var(--border); border-radius:12px; margin-bottom:8px; background:var(--bg); cursor:pointer;}
+.checkbox-row.done{border-color:var(--success); background:rgba(34,197,94,.06);}
+.checkbox-row .chk{width:22px; height:22px; border-radius:7px; border:2px solid var(--border); display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:.15s;}
+.checkbox-row.done .chk{background:var(--success); border-color:var(--success); color:#fff;}
+
+.chart-box{position:relative; height:230px;}
+
+@media(max-width:900px){
+  .sidebar{transform:translateX(100%);}
+  .sidebar.open{transform:translateX(0);}
+  .main{margin-right:0; padding:18px 16px 50px;}
+  .menu-toggle{display:flex;}
+}
+
+/* AUTH & SETUP SCREENS */
+.full-screen{position:fixed; inset:0; background:var(--bg); display:flex; align-items:center; justify-content:center; z-index:500; padding:20px;}
+.auth-card{background:var(--card); border-radius:22px; box-shadow:var(--shadow-lg); padding:36px 30px; width:100%; max-width:400px; border:1px solid var(--border);}
+.auth-logo{width:56px; height:56px; border-radius:16px; background:linear-gradient(135deg,var(--primary),var(--purple)); display:flex; align-items:center; justify-content:center; color:#fff; font-size:24px; margin:0 auto 16px;}
+.auth-tabs{display:flex; gap:6px; background:var(--bg); padding:5px; border-radius:12px; margin-bottom:20px;}
+.auth-tab{flex:1; text-align:center; padding:10px; border-radius:9px; font-weight:700; font-size:13.5px; color:var(--text-dim);}
+.auth-tab.active{background:var(--card); color:var(--primary); box-shadow:var(--shadow);}
+.auth-error{background:rgba(239,68,68,.1); color:var(--danger); padding:10px 14px; border-radius:10px; font-size:13px; font-weight:600; margin-bottom:12px; display:none;}
+.spinner{width:18px; height:18px; border:3px solid rgba(255,255,255,.4); border-top-color:#fff; border-radius:50%; animation:spin .7s linear infinite; display:inline-block;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.sync-badge{display:flex; align-items:center; gap:6px; font-size:11.5px; font-weight:700; color:var(--text-dim); padding:8px 12px; border-radius:10px; background:var(--bg); border:1px solid var(--border);}
+.sync-dot{width:7px; height:7px; border-radius:50%; background:var(--success);}
+.sync-dot.syncing{background:var(--warning); animation:pulse 1s infinite;}
+@keyframes pulse{50%{opacity:.3;}}
+</style>
+</head>
+<body>
+
+<!-- SETUP NEEDED SCREEN -->
+<div class="full-screen" id="setupScreen" style="display:none;">
+  <div class="auth-card" style="max-width:520px;">
+    <div class="auth-logo"><i class="fa-solid fa-server"></i></div>
+    <h2 style="text-align:center;font-weight:800;margin-bottom:8px;">لازم نوصّل المشروع بـ Supabase</h2>
+    <p style="text-align:center;color:var(--text-dim);font-size:13.5px;margin-bottom:20px;">عشان النظام يبقى حقيقي (تسجيل دخول حقيقي + تخزين سحابي + مزامنة فورية بين أي جهاز)، لازم تعمل مشروع Supabase مجاني وتحط بياناته هنا.</p>
+    <ol style="font-size:13px; color:var(--text-dim); line-height:2; padding-right:18px; margin-bottom:18px;">
+      <li>اعمل حساب/مشروع على <b>supabase.com</b> (مجاني).</li>
+      <li>من Project Settings → API، انسخ <b>Project URL</b> و <b>anon public key</b>.</li>
+      <li>افتح SQL Editor في Supabase وشغّل محتوى ملف <b>life-os-schema.sql</b> اللي معاك.</li>
+      <li>حط القيمتين تحت وسيب الباقي علينا 👇</li>
+    </ol>
+    <div class="field"><label>Project URL</label><input type="text" id="setupUrl" placeholder="https://xxxxx.supabase.co"></div>
+    <div class="field"><label>Anon Public Key</label><input type="text" id="setupKey" placeholder="eyJhbGciOi..."></div>
+    <div class="auth-error" id="setupError"></div>
+    <button class="btn btn-primary" style="width:100%;" onclick="saveSupabaseConfig()">حفظ والمتابعة</button>
+  </div>
+</div>
+
+<!-- AUTH SCREEN -->
+<div class="full-screen" id="authScreen" style="display:none;">
+  <div class="auth-card">
+    <div class="auth-logo"><i class="fa-solid fa-layer-group"></i></div>
+    <h2 style="text-align:center;font-weight:800;margin-bottom:18px;">Life OS</h2>
+    <div class="auth-tabs">
+      <div class="auth-tab active" id="tabLogin" onclick="switchAuthTab('login')">تسجيل دخول</div>
+      <div class="auth-tab" id="tabSignup" onclick="switchAuthTab('signup')">حساب جديد</div>
+    </div>
+    <div class="auth-error" id="authError"></div>
+    <div class="field"><label>البريد الإلكتروني</label><input type="email" id="authEmail" placeholder="you@example.com"></div>
+    <div class="field"><label>كلمة المرور</label><input type="password" id="authPassword" placeholder="••••••••"></div>
+    <button class="btn btn-primary" style="width:100%;" id="authSubmitBtn" onclick="submitAuth()">دخول</button>
+  </div>
+</div>
+
+<div class="app" id="appRoot" style="display:none;">
+
+  <aside class="sidebar" id="sidebar">
+    <div class="brand"><div class="logo"><i class="fa-solid fa-layer-group"></i></div><span>Life OS</span></div>
+    <div id="navContainer"></div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <button class="icon-btn menu-toggle" onclick="document.getElementById('sidebar').classList.toggle('open')"><i class="fa-solid fa-bars"></i></button>
+        <h1 id="pageTitle">لوحة التحكم</h1>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn btn-primary btn-sm" id="installBtn" style="display:none;" onclick="triggerInstall()"><i class="fa-solid fa-arrow-down-to-line"></i> تثبيت التطبيق</button>
+        <div class="sync-badge" id="syncBadge"><div class="sync-dot" id="syncDot"></div><span id="syncText">متزامن</span></div>
+        <button class="icon-btn" onclick="toggleTheme()"><i class="fa-solid fa-moon" id="themeIcon"></i></button>
+        <button class="icon-btn" onclick="openProfileModal()"><i class="fa-solid fa-user"></i></button>
+        <button class="icon-btn" onclick="handleLogout()" title="تسجيل خروج"><i class="fa-solid fa-right-from-bracket"></i></button>
+      </div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <section class="section active" id="sec-dashboard">
+      <div class="card" style="margin-bottom:18px; background:linear-gradient(135deg,var(--primary),var(--purple)); color:#fff; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px;">
+        <div>
+          <div style="font-size:20px;font-weight:800;" id="greetingText">أهلاً بيك 👋</div>
+          <div style="opacity:.9;font-size:13.5px;margin-top:4px;" id="dateTimeText"></div>
+          <div style="opacity:.85;font-size:12.5px;margin-top:10px;font-style:italic;" id="quoteText">"وَقُل رَّبِّ زِدْنِي عِلْمًا"</div>
+        </div>
+        <div class="ring-wrap" id="dashRing"></div>
+      </div>
+
+      <div class="grid grid-4" style="margin-bottom:18px;">
+        <div class="card stat-card"><div class="stat-icon" style="background:var(--warning);"><i class="fa-solid fa-fire"></i></div><div><div class="stat-val" id="stStreak">0</div><div class="stat-label">أيام متتالية</div></div></div>
+        <div class="card stat-card"><div class="stat-icon" style="background:var(--purple);"><i class="fa-solid fa-star"></i></div><div><div class="stat-val" id="stPoints">0</div><div class="stat-label">النقاط</div></div></div>
+        <div class="card stat-card"><div class="stat-icon" style="background:var(--primary);"><i class="fa-solid fa-ranking-star"></i></div><div><div class="stat-val" id="stLevel">1</div><div class="stat-label">المستوى الحالي</div></div></div>
+        <div class="card stat-card"><div class="stat-icon" style="background:var(--success);"><i class="fa-solid fa-check-double"></i></div><div><div class="stat-val" id="stTasksToday">0/0</div><div class="stat-label">مهام اليوم</div></div></div>
+      </div>
+
+      <div class="grid grid-3">
+        <div class="card">
+          <div class="section-head"><h2><i class="fa-solid fa-mosque" style="color:var(--primary);"></i> الصلاة اليوم</h2></div>
+          <div id="dashPrayerMini"></div>
+        </div>
+        <div class="card">
+          <div class="section-head"><h2><i class="fa-solid fa-list-check" style="color:var(--success);"></i> مهام اليوم</h2></div>
+          <div id="dashTasksMini"></div>
+        </div>
+        <div class="card">
+          <div class="section-head"><h2><i class="fa-solid fa-glass-water" style="color:#0EA5E9;"></i> المياه</h2></div>
+          <div id="dashWaterMini"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PRAYER -->
+    <section class="section" id="sec-prayer">
+      <div class="section-head"><h2><i class="fa-solid fa-mosque"></i> متابعة الصلاة</h2>
+        <div style="display:flex;gap:8px;"><input type="date" id="prayerDate"></div>
+      </div>
+      <div class="grid grid-5" id="prayerCards" style="margin-bottom:18px;"></div>
+      <div class="grid grid-3">
+        <div class="card stat-card"><div class="stat-icon" style="background:var(--success);"><i class="fa-solid fa-percent"></i></div><div><div class="stat-val" id="prayerPct">0%</div><div class="stat-label">نسبة الالتزام (٣٠ يوم)</div></div></div>
+        <div class="card stat-card"><div class="stat-icon" style="background:var(--warning);"><i class="fa-solid fa-fire"></i></div><div><div class="stat-val" id="prayerStreak">0</div><div class="stat-label">أيام الصلاة كاملة متتالية</div></div></div>
+        <div class="card">
+          <div style="font-weight:700;font-size:13px;margin-bottom:10px;">إحصائيات أسبوعية</div>
+          <div class="chart-box" style="height:120px;"><canvas id="prayerChart"></canvas></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- QURAN -->
+    <section class="section" id="sec-quran">
+      <div class="section-head"><h2><i class="fa-solid fa-book-quran"></i> القرآن الكريم</h2>
+        <button class="btn btn-primary btn-sm" onclick="openQuranModal()"><i class="fa-solid fa-plus"></i> تسجيل قراءة</button>
+      </div>
+      <div class="grid grid-4" style="margin-bottom:18px;">
+        <div class="card stat-card"><div class="stat-icon" style="background:var(--primary);"><i class="fa-solid fa-file-lines"></i></div><div><div class="stat-val" id="quranPages">0</div><div class="stat-label">صفحات اليوم</div></div></div>
+        <div class="card stat-card"><div class="stat-icon" style="background:var(--purple);"><i class="fa-solid fa-layer-group"></i></div><div><div class="stat-val" id="quranTotalPages">0</div><div class="stat-label">إجمالي الصفحات</div></div></div>
+        <div class="card stat-card"><div class="stat-icon" style="background:var(--success);"><i class="fa-solid fa-bullseye"></i></div><div><div class="stat-val" id="quranGoalPct">0%</div><div class="stat-label">الهدف اليومي</div></div></div>
+        <div class="card">
+          <label style="font-size:11px;color:var(--text-dim);font-weight:700;">الهدف اليومي (صفحات)</label>
+          <input type="number" id="quranGoalInput" style="width:100%;margin-top:6px;" onchange="setQuranGoal(this.value)">
+        </div>
+      </div>
+      <div class="card">
+        <div style="font-weight:700;margin-bottom:10px;">سجل القراءة</div>
+        <div id="quranLog"></div>
+      </div>
+    </section>
+
+    <!-- ADHKAR -->
+    <section class="section" id="sec-adhkar">
+      <div class="section-head"><h2><i class="fa-solid fa-hands-praying"></i> الأذكار اليومية</h2></div>
+      <div class="card"><div id="adhkarList"></div></div>
+    </section>
+
+    <!-- STUDY -->
+    <section class="section" id="sec-study">
+      <div class="section-head"><h2><i class="fa-solid fa-graduation-cap"></i> الدراسة</h2>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-ghost btn-sm" onclick="openSubjectModal()"><i class="fa-solid fa-plus"></i> مادة جديدة</button>
+          <button class="btn btn-primary btn-sm" onclick="togglePomodoro()"><i class="fa-solid fa-clock" id="pomoIcon"></i> <span id="pomoLabel">بدء بومودورو</span></button>
+        </div>
+      </div>
+      <div class="grid grid-3" style="margin-bottom:18px;">
+        <div class="card stat-card"><div class="stat-icon" style="background:var(--primary);"><i class="fa-solid fa-hourglass-half"></i></div><div><div class="stat-val" id="studyHoursToday">0</div><div class="stat-label">ساعات اليوم</div></div></div>
+        <div class="card stat-card"><div class="stat-icon" style="background:var(--purple);"><i class="fa-solid fa-book"></i></div><div><div class="stat-val" id="studySubjectsCount">0</div><div class="stat-label">عدد المواد</div></div></div>
+        <div class="card" style="display:flex;align-items:center;justify-content:center;">
+          <div style="font-size:34px;font-weight:800;font-family:monospace;" id="pomoTimer">25:00</div>
+        </div>
+      </div>
+      <div class="card"><div style="font-weight:700;margin-bottom:10px;">المواد الدراسية</div><div id="subjectsList"></div></div>
+    </section>
+
+    <!-- TASKS -->
+    <section class="section" id="sec-tasks">
+      <div class="section-head"><h2><i class="fa-solid fa-list-check"></i> المهام اليومية</h2>
+        <button class="btn btn-primary btn-sm" onclick="openTaskModal()"><i class="fa-solid fa-plus"></i> مهمة جديدة</button>
+      </div>
+      <div class="tabs" id="taskFilterTabs">
+        <div class="tab active" data-f="all" onclick="setTaskFilter('all')">الكل</div>
+        <div class="tab" data-f="pending" onclick="setTaskFilter('pending')">قيد التنفيذ</div>
+        <div class="tab" data-f="done" onclick="setTaskFilter('done')">مكتملة</div>
+      </div>
+      <div class="card"><div id="tasksList"></div></div>
+    </section>
+
+    <!-- GYM -->
+    <section class="section" id="sec-gym">
+      <div class="section-head"><h2><i class="fa-solid fa-dumbbell"></i> الجيم</h2>
+        <button class="btn btn-primary btn-sm" onclick="openWorkoutModal()"><i class="fa-solid fa-plus"></i> تمرين جديد</button>
+      </div>
+      <div class="grid grid-4" style="margin-bottom:18px;">
+        <div class="card stat-card"><div class="stat-icon" style="background:var(--danger);"><i class="fa-solid fa-weight-scale"></i></div><div><div class="stat-val" id="gymWeight">--</div><div class="stat-label">الوزن الحالي (كجم)</div></div></div>
+        <div class="card stat-card"><div class="stat-icon" style="background:var(--warning);"><i class="fa-solid fa-shoe-prints"></i></div><div><div class="stat-val" id="gymBMI">--</div><div class="stat-label">BMI</div></div></div>
+        <div class="card stat-card"><div class="stat-icon" style="background:var(--purple);"><i class="fa-solid fa-fire-flame-curved"></i></div><div><div class="stat-val" id="gymWorkoutsCount">0</div><div class="stat-label">عدد التمارين المسجلة</div></div></div>
+        <button class="btn btn-ghost" onclick="openMeasurementModal()" style="height:100%;"><i class="fa-solid fa-ruler"></i> تسجيل قياسات</button>
+      </div>
+      <div class="grid grid-2">
+        <div class="card"><div style="font-weight:700;margin-bottom:10px;">سجل التمارين</div><div id="workoutsList"></div></div>
+        <div class="card"><div style="font-weight:700;margin-bottom:10px;">تطور الوزن</div><div class="chart-box"><canvas id="weightChart"></canvas></div></div>
+      </div>
+    </section>
+
+    <!-- NUTRITION -->
+    <section class="section" id="sec-nutrition">
+      <div class="section-head"><h2><i class="fa-solid fa-utensils"></i> التغذية</h2>
+        <button class="btn btn-primary btn-sm" onclick="openMealModal()"><i class="fa-solid fa-plus"></i> إضافة وجبة</button>
+      </div>
+      <div class="grid grid-4" style="margin-bottom:18px;">
+        <div class="card"><div class="stat-label">السعرات</div><div class="stat-val" id="nutCal">0 / 0</div><div class="progress-bar" style="margin-top:8px;"><div class="fill" id="nutCalFill"></div></div></div>
+        <div class="card"><div class="stat-label">بروتين (جم)</div><div class="stat-val" id="nutProtein">0 / 0</div><div class="progress-bar" style="margin-top:8px;"><div class="fill" id="nutProteinFill"></div></div></div>
+        <div class="card"><div class="stat-label">كارب (جم)</div><div class="stat-val" id="nutCarb">0 / 0</div><div class="progress-bar" style="margin-top:8px;"><div class="fill" id="nutCarbFill"></div></div></div>
+        <div class="card"><div class="stat-label">دهون (جم)</div><div class="stat-val" id="nutFat">0 / 0</div><div class="progress-bar" style="margin-top:8px;"><div class="fill" id="nutFatFill"></div></div></div>
+      </div>
+      <div class="card" style="margin-bottom:18px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <div style="font-weight:700;">تعديل الأهداف اليومية</div>
+        </div>
+        <div class="row2" style="grid-template-columns:repeat(4,1fr);">
+          <div class="field"><label>سعرات</label><input type="number" id="goalCal"></div>
+          <div class="field"><label>بروتين</label><input type="number" id="goalProtein"></div>
+          <div class="field"><label>كارب</label><input type="number" id="goalCarb"></div>
+          <div class="field"><label>دهون</label><input type="number" id="goalFat"></div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="saveNutritionGoals()">حفظ الأهداف</button>
+      </div>
+      <div class="card"><div style="font-weight:700;margin-bottom:10px;">وجبات اليوم</div><div id="mealsList"></div></div>
+    </section>
+
+    <!-- WATER -->
+    <section class="section" id="sec-water">
+      <div class="section-head"><h2><i class="fa-solid fa-glass-water"></i> شرب المياه</h2></div>
+      <div class="grid grid-3">
+        <div class="card" style="text-align:center;">
+          <div style="font-size:40px;font-weight:800;color:#0EA5E9;" id="waterCount">0</div>
+          <div class="stat-label" style="margin-bottom:14px;">كوب من <span id="waterGoalTxt">8</span></div>
+          <div class="progress-bar" style="margin-bottom:16px;"><div class="fill" id="waterFill" style="background:#0EA5E9;"></div></div>
+          <div style="display:flex;gap:8px;justify-content:center;">
+            <button class="btn btn-ghost btn-sm" onclick="addWater(-1)"><i class="fa-solid fa-minus"></i></button>
+            <button class="btn btn-primary btn-sm" onclick="addWater(1)"><i class="fa-solid fa-plus"></i> كوب</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="field"><label>الهدف اليومي (أكواب)</label><input type="number" id="waterGoalInput" onchange="setWaterGoal(this.value)"></div>
+          <div class="field"><label><input type="checkbox" id="waterReminderChk" style="width:auto;"> تذكير كل ساعة</label></div>
+        </div>
+        <div class="card"><div style="font-weight:700;margin-bottom:10px;">آخر 7 أيام</div><div class="chart-box" style="height:150px;"><canvas id="waterChart"></canvas></div></div>
+      </div>
+    </section>
+
+    <!-- SLEEP -->
+    <section class="section" id="sec-sleep">
+      <div class="section-head"><h2><i class="fa-solid fa-bed"></i> النوم</h2>
+        <button class="btn btn-primary btn-sm" onclick="openSleepModal()"><i class="fa-solid fa-plus"></i> تسجيل نوم</button>
+      </div>
+      <div class="grid grid-3" style="margin-bottom:18px;">
+        <div class="card stat-card"><div class="stat-icon" style="background:var(--purple);"><i class="fa-solid fa-moon"></i></div><div><div class="stat-val" id="sleepAvg">0</div><div class="stat-label">متوسط ساعات النوم</div></div></div>
+        <div class="card stat-card"><div class="stat-icon" style="background:var(--primary);"><i class="fa-solid fa-star"></i></div><div><div class="stat-val" id="sleepQualityAvg">--</div><div class="stat-label">متوسط الجودة</div></div></div>
+        <div class="card stat-card"><div class="stat-icon" style="background:var(--success);"><i class="fa-solid fa-calendar-check"></i></div><div><div class="stat-val" id="sleepLogsCount">0</div><div class="stat-label">عدد السجلات</div></div></div>
+      </div>
+      <div class="card"><div style="font-weight:700;margin-bottom:10px;">سجل النوم</div><div class="chart-box" style="margin-bottom:16px;"><canvas id="sleepChart"></canvas></div><div id="sleepLog"></div></div>
+    </section>
+
+    <!-- HABITS -->
+    <section class="section" id="sec-habits">
+      <div class="section-head"><h2><i class="fa-solid fa-rotate"></i> العادات اليومية</h2>
+        <button class="btn btn-primary btn-sm" onclick="openHabitModal()"><i class="fa-solid fa-plus"></i> عادة جديدة</button>
+      </div>
+      <div id="habitsList" class="grid grid-3"></div>
+    </section>
+
+    <!-- FINANCE -->
+    <section class="section" id="sec-finance">
+      <div class="section-head"><h2><i class="fa-solid fa-wallet"></i> الميزانية</h2>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-success btn-sm" onclick="openFinanceModal('income')"><i class="fa-solid fa-plus"></i> دخل</button>
+          <button class="btn btn-danger btn-sm" onclick="openFinanceModal('expense')"><i class="fa-solid fa-plus"></i> مصروف</button>
+        </div>
+      </div>
+      <div class="grid grid-3" style="margin-bottom:18px;">
+        <div class="card stat-card"><div class="stat-icon" style="background:var(--success);"><i class="fa-solid fa-arrow-trend-up"></i></div><div><div class="stat-val" id="finIncome">0</div><div class="stat-label">إجمالي الدخل</div></div></div>
+        <div class="card stat-card"><div class="stat-icon" style="background:var(--danger);"><i class="fa-solid fa-arrow-trend-down"></i></div><div><div class="stat-val" id="finExpense">0</div><div class="stat-label">إجمالي المصروفات</div></div></div>
+        <div class="card stat-card"><div class="stat-icon" style="background:var(--primary);"><i class="fa-solid fa-piggy-bank"></i></div><div><div class="stat-val" id="finSaving">0</div><div class="stat-label">الادخار</div></div></div>
+      </div>
+      <div class="grid grid-2">
+        <div class="card"><div style="font-weight:700;margin-bottom:10px;">توزيع المصروفات</div><div class="chart-box"><canvas id="financeChart"></canvas></div></div>
+        <div class="card"><div style="font-weight:700;margin-bottom:10px;">آخر الحركات</div><div id="financeList"></div></div>
+      </div>
+    </section>
+
+    <!-- MOOD -->
+    <section class="section" id="sec-mood">
+      <div class="section-head"><h2><i class="fa-solid fa-face-smile"></i> الحالة النفسية</h2></div>
+      <div class="card" style="margin-bottom:18px;">
+        <div style="font-weight:700;margin-bottom:14px;">إزاي حاسس اليوم؟</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="btn btn-ghost mood-btn" data-m="5" onclick="setMood(5)">😁 ممتاز</button>
+          <button class="btn btn-ghost mood-btn" data-m="4" onclick="setMood(4)">🙂 جيد</button>
+          <button class="btn btn-ghost mood-btn" data-m="3" onclick="setMood(3)">😐 عادي</button>
+          <button class="btn btn-ghost mood-btn" data-m="2" onclick="setMood(2)">😔 سيء</button>
+          <button class="btn btn-ghost mood-btn" data-m="1" onclick="setMood(1)">😢 حزين</button>
+        </div>
+        <textarea id="moodNote" placeholder="ملاحظة (اختياري)..." style="width:100%;margin-top:12px;" rows="2"></textarea>
+      </div>
+      <div class="card"><div style="font-weight:700;margin-bottom:10px;">الحالة خلال آخر 14 يوم</div><div class="chart-box"><canvas id="moodChart"></canvas></div></div>
+    </section>
+
+    <!-- GOALS -->
+    <section class="section" id="sec-goals">
+      <div class="section-head"><h2><i class="fa-solid fa-bullseye"></i> الأهداف</h2>
+        <button class="btn btn-primary btn-sm" onclick="openGoalModal()"><i class="fa-solid fa-plus"></i> هدف جديد</button>
+      </div>
+      <div id="goalsList" class="grid grid-3"></div>
+    </section>
+
+    <!-- ACHIEVEMENTS -->
+    <section class="section" id="sec-achievements">
+      <div class="section-head"><h2><i class="fa-solid fa-trophy"></i> الإنجازات والأوسمة</h2></div>
+      <div id="achList" class="grid grid-4"></div>
+    </section>
+
+    <!-- CHALLENGES -->
+    <section class="section" id="sec-challenges">
+      <div class="section-head"><h2><i class="fa-solid fa-flag-checkered"></i> التحديات</h2>
+        <button class="btn btn-primary btn-sm" onclick="openChallengeModal()"><i class="fa-solid fa-plus"></i> تحدي جديد</button>
+      </div>
+      <div id="challengesList" class="grid grid-3"></div>
+    </section>
+
+    <!-- CALENDAR -->
+    <section class="section" id="sec-calendar">
+      <div class="section-head"><h2><i class="fa-solid fa-calendar-days"></i> التقويم</h2>
+        <button class="btn btn-primary btn-sm" onclick="openEventModal()"><i class="fa-solid fa-plus"></i> حدث جديد</button>
+      </div>
+      <div class="card"><div id="calendarList"></div></div>
+    </section>
+
+    <!-- STATS -->
+    <section class="section" id="sec-stats">
+      <div class="section-head"><h2><i class="fa-solid fa-chart-line"></i> الإحصائيات العامة</h2></div>
+      <div class="grid grid-2">
+        <div class="card"><div style="font-weight:700;margin-bottom:10px;">النقاط خلال آخر 7 أيام</div><div class="chart-box"><canvas id="pointsChart"></canvas></div></div>
+        <div class="card"><div style="font-weight:700;margin-bottom:10px;">نظرة عامة على الالتزام</div><div class="chart-box"><canvas id="overviewChart"></canvas></div></div>
+      </div>
+    </section>
+
+    <!-- SETTINGS / PROFILE -->
+    <section class="section" id="sec-settings">
+      <div class="section-head"><h2><i class="fa-solid fa-gear"></i> الملف الشخصي والإعدادات</h2></div>
+      <div class="grid grid-2">
+        <div class="card">
+          <div class="field"><label>الاسم</label><input type="text" id="profName"></div>
+          <div class="field"><label>البريد الإلكتروني</label><input type="text" id="profEmail" disabled></div>
+          <button class="btn btn-primary btn-sm" onclick="saveProfile()">حفظ</button>
+        </div>
+        <div class="card">
+          <div style="font-weight:700;margin-bottom:12px;">إدارة البيانات</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-ghost btn-sm" onclick="exportData()"><i class="fa-solid fa-download"></i> تصدير نسخة احتياطية</button>
+            <button class="btn btn-ghost btn-sm" onclick="document.getElementById('importFile').click()"><i class="fa-solid fa-upload"></i> استيراد نسخة</button>
+            <input type="file" id="importFile" hidden onchange="importData(event)">
+            <button class="btn btn-danger btn-sm" onclick="resetAllData()"><i class="fa-solid fa-trash"></i> إعادة ضبط كامل</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<div class="modal-overlay" id="modalOverlay"><div class="modal" id="modalBody"></div></div>
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+/* ============== DATA LAYER ============== */
+const DEFAULT_DATA = {
+  profile:{name:'صديقي', points:0, level:1, streak:0, lastActiveDate:null},
+  prayers:{}, // date -> {fajr:{done,mosque,sunnah,rating}, ...}
+  quran:{goal:5, log:{}}, // log: date->pages
+  adhkar:{}, // date -> {morning,evening,sleep,afterPrayer,istighfar,salawat}
+  study:{subjects:[], sessions:[]},
+  tasks:[],
+  gym:{workouts:[], measurements:[]},
+  nutrition:{goal:{cal:2200,protein:150,carb:250,fat:70}, log:{}}, // log: date -> {meals:[]}
+  water:{goal:8, log:{}}, // date -> count
+  sleep:{log:[]},
+  habits:[],
+  finance:{items:[]},
+  mood:{log:{}}, // date -> {val, note}
+  goals:[],
+  achievements:[
+    {id:'a1', name:'أول خطوة', desc:'سجّل أول نشاط في التطبيق', icon:'fa-shoe-prints', unlocked:false},
+    {id:'a2', name:'أسبوع كامل', desc:'حافظ على السلسلة 7 أيام', icon:'fa-fire', unlocked:false},
+    {id:'a3', name:'قارئ مثابر', desc:'سجّل قراءة قرآن 5 أيام', icon:'fa-book-quran', unlocked:false},
+    {id:'a4', name:'منظم', desc:'أكمل 10 مهام', icon:'fa-list-check', unlocked:false},
+    {id:'a5', name:'رياضي', desc:'سجّل 5 تمارين', icon:'fa-dumbbell', unlocked:false},
+    {id:'a6', name:'مصلي دائم', desc:'صلِّ الصلوات الخمس كاملة يوم واحد', icon:'fa-mosque', unlocked:false},
+  ],
+  challenges:[],
+  calendarEvents:[],
+  settings:{theme:'light'}
+};
+let DATA = loadLocalData();
+function loadLocalData(){
+  try{
+    const raw = localStorage.getItem('lifeos_data');
+    if(!raw) return JSON.parse(JSON.stringify(DEFAULT_DATA));
+    const parsed = JSON.parse(raw);
+    return Object.assign(JSON.parse(JSON.stringify(DEFAULT_DATA)), parsed);
+  }catch(e){ return JSON.parse(JSON.stringify(DEFAULT_DATA)); }
+}
+let cloudPushTimer=null, lastLocalPushAt=0;
+function saveData(){
+  localStorage.setItem('lifeos_data', JSON.stringify(DATA));
+  scheduleCloudPush();
+}
+function scheduleCloudPush(){
+  if(!supabaseClient || !currentUser) return;
+  setSyncStatus('syncing');
+  clearTimeout(cloudPushTimer);
+  cloudPushTimer = setTimeout(pushCloudData, 900);
+}
+async function pushCloudData(){
+  if(!supabaseClient || !currentUser) return;
+  lastLocalPushAt = Date.now();
+  const {error} = await supabaseClient.from('life_os_data').upsert({
+    user_id: currentUser.id, data: DATA, updated_at: new Date().toISOString()
+  });
+  setSyncStatus(error? 'error':'synced');
+}
+function setSyncStatus(state){
+  const dot = document.getElementById('syncDot'); const txt = document.getElementById('syncText');
+  if(!dot) return;
+  if(state==='syncing'){ dot.className='sync-dot syncing'; txt.textContent='بيتزامن...'; }
+  else if(state==='error'){ dot.style.background='var(--danger)'; dot.className='sync-dot'; txt.textContent='فشل المزامنة'; }
+  else { dot.className='sync-dot'; txt.textContent='متزامن'; }
+}
+function todayKey(d){ const dt = d?new Date(d):new Date(); return dt.toISOString().split('T')[0]; }
+
+/* ============== SUPABASE CONFIG & AUTH ============== */
+let supabaseClient=null, currentUser=null, realtimeChannel=null;
+function checkSetup(){
+  const url = localStorage.getItem('lifeos_sb_url');
+  const key = localStorage.getItem('lifeos_sb_key');
+  if(!url || !key){ document.getElementById('setupScreen').style.display='flex'; return false; }
+  return {url,key};
+}
+function saveSupabaseConfig(){
+  const url = document.getElementById('setupUrl').value.trim();
+  const key = document.getElementById('setupKey').value.trim();
+  const errEl = document.getElementById('setupError');
+  if(!url.startsWith('https://') || !url.includes('supabase.co')){ errEl.textContent='اتأكد إن الـ Project URL صحيح (لازم يبدأ بـ https:// ويحتوي supabase.co)'; errEl.style.display='block'; return; }
+  if(key.length<30){ errEl.textContent='الـ Anon Key اللي حطيته قصير أو غلط'; errEl.style.display='block'; return; }
+  localStorage.setItem('lifeos_sb_url', url);
+  localStorage.setItem('lifeos_sb_key', key);
+  document.getElementById('setupScreen').style.display='none';
+  boot();
+}
+function initSupabaseClient(url,key){
+  supabaseClient = window.supabase.createClient(url, key);
+}
+function switchAuthTab(tab){
+  document.getElementById('tabLogin').classList.toggle('active', tab==='login');
+  document.getElementById('tabSignup').classList.toggle('active', tab==='signup');
+  document.getElementById('authSubmitBtn').textContent = tab==='login'?'دخول':'إنشاء حساب';
+  document.getElementById('authSubmitBtn').dataset.mode = tab;
+  document.getElementById('authError').style.display='none';
+}
+document.addEventListener('DOMContentLoaded', ()=>{ const b=document.getElementById('authSubmitBtn'); if(b) b.dataset.mode='login'; });
+async function submitAuth(){
+  const email = document.getElementById('authEmail').value.trim();
+  const password = document.getElementById('authPassword').value;
+  const errEl = document.getElementById('authError');
+  const mode = document.getElementById('authSubmitBtn').dataset.mode || 'login';
+  errEl.style.display='none';
+  if(!email || password.length<6){ errEl.textContent='اكتب إيميل صحيح وكلمة مرور 6 حروف على الأقل'; errEl.style.display='block'; return; }
+  const btn = document.getElementById('authSubmitBtn');
+  const originalText = btn.textContent; btn.innerHTML = '<span class="spinner"></span>'; btn.disabled=true;
+  let result;
+  if(mode==='login') result = await supabaseClient.auth.signInWithPassword({email, password});
+  else result = await supabaseClient.auth.signUp({email, password});
+  btn.disabled=false; btn.textContent=originalText;
+  if(result.error){ errEl.textContent = translateAuthError(result.error.message); errEl.style.display='block'; return; }
+  if(mode==='signup' && !result.data.session){ errEl.style.display='block'; errEl.style.color='var(--success)'; errEl.style.background='rgba(34,197,94,.1)'; errEl.textContent='اتبعت رسالة تأكيد لإيميلك، افتحها عشان تفعل حسابك ثم سجل دخول.'; return; }
+  await onAuthSuccess(result.data.user);
+}
+function translateAuthError(msg){
+  if(msg.includes('Invalid login credentials')) return 'الإيميل أو كلمة المرور غلط';
+  if(msg.includes('already registered') || msg.includes('already exists')) return 'الإيميل ده مسجل قبل كده، جرب تسجيل دخول';
+  if(msg.includes('rate limit')) return 'محاولات كتير، استنى شوية وجرب تاني';
+  return msg;
+}
+async function onAuthSuccess(user){
+  currentUser = user;
+  document.getElementById('authScreen').style.display='none';
+  await fetchOrCreateCloudData();
+  document.getElementById('appRoot').style.display='flex';
+  renderAll();
+  subscribeRealtime();
+}
+async function fetchOrCreateCloudData(){
+  setSyncStatus('syncing');
+  const {data, error} = await supabaseClient.from('life_os_data').select('data,updated_at').eq('user_id', currentUser.id).maybeSingle();
+  if(error){ setSyncStatus('error'); toast('حصل خطأ في تحميل بياناتك من السحابة','fa-triangle-exclamation','var(--danger)'); return; }
+  if(data && data.data){
+    DATA = Object.assign(JSON.parse(JSON.stringify(DEFAULT_DATA)), data.data);
+    localStorage.setItem('lifeos_data', JSON.stringify(DATA));
+  } else {
+    await supabaseClient.from('life_os_data').insert({user_id:currentUser.id, data:DATA, updated_at:new Date().toISOString()});
+  }
+  setSyncStatus('synced');
+}
+function subscribeRealtime(){
+  if(realtimeChannel) supabaseClient.removeChannel(realtimeChannel);
+  realtimeChannel = supabaseClient.channel('life_os_data_'+currentUser.id)
+    .on('postgres_changes', {event:'UPDATE', schema:'public', table:'life_os_data', filter:'user_id=eq.'+currentUser.id}, payload=>{
+      // تجاهل الإشعار لو ده صدى تحديثنا إحنا بالذات
+      if(Date.now() - lastLocalPushAt < 2500) return;
+      if(payload.new && payload.new.data){
+        DATA = Object.assign(JSON.parse(JSON.stringify(DEFAULT_DATA)), payload.new.data);
+        localStorage.setItem('lifeos_data', JSON.stringify(DATA));
+        renderAll();
+        const activeSection = document.querySelector('.nav-item.active')?.dataset.id || 'dashboard';
+        renderSection(activeSection);
+        toast('اتحدثت بياناتك من جهاز تاني','fa-cloud-arrow-down','var(--primary)');
+      }
+    }).subscribe();
+}
+async function handleLogout(){
+  if(!confirm('عايز تسجل خروج؟')) return;
+  clearTimeout(cloudPushTimer);
+  if(realtimeChannel) supabaseClient.removeChannel(realtimeChannel);
+  await supabaseClient.auth.signOut();
+  currentUser = null;
+  document.getElementById('appRoot').style.display='none';
+  document.getElementById('authEmail').value=''; document.getElementById('authPassword').value='';
+  document.getElementById('authScreen').style.display='flex';
+}
+async function boot(){
+  const cfg = checkSetup();
+  if(!cfg) return;
+  initSupabaseClient(cfg.url, cfg.key);
+  const {data:{session}} = await supabaseClient.auth.getSession();
+  if(session && session.user){ await onAuthSuccess(session.user); }
+  else { document.getElementById('authScreen').style.display='flex'; }
+}
+
+/* ============== TOAST ============== */
+function toast(msg, icon='fa-circle-check', color='var(--success)'){
+  const w = document.getElementById('toastWrap');
+  const t = document.createElement('div');
+  t.className='toast';
+  t.innerHTML = `<i class="fa-solid ${icon}" style="color:${color}"></i> ${msg}`;
+  w.appendChild(t);
+  setTimeout(()=>{t.style.opacity='0'; t.style.transform='translateX(-30px)'; t.style.transition='.3s'; setTimeout(()=>t.remove(),300);}, 2600);
+}
+
+/* ============== POINTS / STREAK / LEVEL ============== */
+function addPoints(n){
+  DATA.profile.points += n;
+  DATA.profile.level = Math.floor(DATA.profile.points/200)+1;
+  const t = todayKey();
+  if(DATA.profile.lastActiveDate !== t){
+    const y = todayKey(new Date(Date.now()-86400000));
+    DATA.profile.streak = (DATA.profile.lastActiveDate === y) ? DATA.profile.streak+1 : 1;
+    DATA.profile.lastActiveDate = t;
+  }
+  saveData();
+  checkAchievements();
+  renderTop();
+}
+function checkAchievements(){
+  const a = id => DATA.achievements.find(x=>x.id===id);
+  if(DATA.profile.points>0 && !a('a1').unlocked){ a('a1').unlocked=true; toast('🏆 إنجاز جديد: أول خطوة','fa-trophy','var(--warning)'); }
+  if(DATA.profile.streak>=7 && !a('a2').unlocked){ a('a2').unlocked=true; toast('🏆 إنجاز جديد: أسبوع كامل','fa-trophy','var(--warning)'); }
+  if(Object.keys(DATA.quran.log).length>=5 && !a('a3').unlocked){ a('a3').unlocked=true; toast('🏆 إنجاز جديد: قارئ مثابر','fa-trophy','var(--warning)'); }
+  if(DATA.tasks.filter(t=>t.done).length>=10 && !a('a4').unlocked){ a('a4').unlocked=true; toast('🏆 إنجاز جديد: منظم','fa-trophy','var(--warning)'); }
+  if(DATA.gym.workouts.length>=5 && !a('a5').unlocked){ a('a5').unlocked=true; toast('🏆 إنجاز جديد: رياضي','fa-trophy','var(--warning)'); }
+  const tp = DATA.prayers[todayKey()];
+  if(tp && ['fajr','dhuhr','asr','maghrib','isha'].every(k=>tp[k]?.done) && !a('a6').unlocked){ a('a6').unlocked=true; toast('🏆 إنجاز جديد: مصلي دائم','fa-trophy','var(--warning)'); }
+  saveData();
+}
+
+/* ============== NAVIGATION ============== */
+const NAV = [
+  {group:'الرئيسية', items:[
+    {id:'dashboard', icon:'fa-gauge-high', label:'لوحة التحكم'},
+    {id:'stats', icon:'fa-chart-line', label:'الإحصائيات'},
+    {id:'calendar', icon:'fa-calendar-days', label:'التقويم'},
+  ]},
+  {group:'الروحانيات', items:[
+    {id:'prayer', icon:'fa-mosque', label:'الصلاة'},
+    {id:'quran', icon:'fa-book-quran', label:'القرآن'},
+    {id:'adhkar', icon:'fa-hands-praying', label:'الأذكار'},
+  ]},
+  {group:'الإنتاجية', items:[
+    {id:'study', icon:'fa-graduation-cap', label:'الدراسة'},
+    {id:'tasks', icon:'fa-list-check', label:'المهام'},
+    {id:'habits', icon:'fa-rotate', label:'العادات'},
+    {id:'goals', icon:'fa-bullseye', label:'الأهداف'},
+  ]},
+  {group:'الصحة', items:[
+    {id:'gym', icon:'fa-dumbbell', label:'الجيم'},
+    {id:'nutrition', icon:'fa-utensils', label:'التغذية'},
+    {id:'water', icon:'fa-glass-water', label:'المياه'},
+    {id:'sleep', icon:'fa-bed', label:'النوم'},
+    {id:'mood', icon:'fa-face-smile', label:'الحالة النفسية'},
+  ]},
+  {group:'أخرى', items:[
+    {id:'finance', icon:'fa-wallet', label:'الميزانية'},
+    {id:'achievements', icon:'fa-trophy', label:'الإنجازات'},
+    {id:'challenges', icon:'fa-flag-checkered', label:'التحديات'},
+    {id:'settings', icon:'fa-gear', label:'الإعدادات'},
+  ]},
+];
+function buildNav(){
+  const c = document.getElementById('navContainer');
+  c.innerHTML = NAV.map(g=>`
+    <div class="nav-group-title">${g.group}</div>
+    ${g.items.map(i=>`<div class="nav-item ${i.id==='dashboard'?'active':''}" data-id="${i.id}" onclick="goTo('${i.id}')"><i class="fa-solid ${i.icon}"></i><span>${i.label}</span></div>`).join('')}
+  `).join('');
+}
+function goTo(id){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.getElementById('sec-'+id).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active', n.dataset.id===id));
+  const item = NAV.flatMap(g=>g.items).find(i=>i.id===id);
+  document.getElementById('pageTitle').textContent = item.label;
+  if(window.innerWidth<=900) document.getElementById('sidebar').classList.remove('open');
+  renderSection(id);
+}
+
+/* ============== THEME ============== */
+function toggleTheme(){
+  const cur = document.documentElement.getAttribute('data-theme');
+  const next = cur==='dark' ? 'light':'dark';
+  document.documentElement.setAttribute('data-theme', next==='dark'?'dark':'');
+  DATA.settings.theme = next; saveData();
+  document.getElementById('themeIcon').className = 'fa-solid '+(next==='dark'?'fa-sun':'fa-moon');
+}
+function initTheme(){
+  if(DATA.settings.theme==='dark'){ document.documentElement.setAttribute('data-theme','dark'); document.getElementById('themeIcon').className='fa-solid fa-sun'; }
+}
+
+/* ============== MODAL HELPERS ============== */
+function openModal(html){ document.getElementById('modalBody').innerHTML = html; document.getElementById('modalOverlay').classList.add('active'); }
+function closeModal(){ document.getElementById('modalOverlay').classList.remove('active'); }
+document.getElementById('modalOverlay').addEventListener('click', e=>{ if(e.target.id==='modalOverlay') closeModal(); });
+
+/* ============== TOP BAR / DASHBOARD ============== */
+function renderTop(){
+  document.getElementById('stStreak').textContent = DATA.profile.streak;
+  document.getElementById('stPoints').textContent = DATA.profile.points;
+  document.getElementById('stLevel').textContent = DATA.profile.level;
+  const t = DATA.tasks.filter(x=>x.date===todayKey());
+  document.getElementById('stTasksToday').textContent = `${t.filter(x=>x.done).length}/${t.length}`;
+  const hour = new Date().getHours();
+  const greet = hour<12?'صباح الخير':hour<18?'مساء الخير':'مساء الخير';
+  document.getElementById('greetingText').textContent = `${greet}، ${DATA.profile.name} 👋`;
+  document.getElementById('dateTimeText').textContent = new Date().toLocaleDateString('ar-EG',{weekday:'long', year:'numeric', month:'long', day:'numeric'}) + ' - ' + new Date().toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'});
+  renderDashRing();
+  renderDashMinis();
+}
+function computeDayCompletion(){
+  let total=0, done=0;
+  const p = DATA.prayers[todayKey()];
+  if(p){ ['fajr','dhuhr','asr','maghrib','isha'].forEach(k=>{ total++; if(p[k]?.done) done++; }); } else total+=5;
+  const t = DATA.tasks.filter(x=>x.date===todayKey());
+  total += t.length; done += t.filter(x=>x.done).length;
+  const w = DATA.water.log[todayKey()]||0;
+  total++; if(w >= DATA.water.goal) done++;
+  return total? Math.round((done/total)*100):0;
+}
+function renderDashRing(){
+  const pct = computeDayCompletion();
+  const r=50, c=2*Math.PI*r, off=c-(pct/100)*c;
+  document.getElementById('dashRing').innerHTML = `
+    <svg width="120" height="120"><circle cx="60" cy="60" r="${r}" stroke="rgba(255,255,255,.25)" stroke-width="10" fill="none"/>
+    <circle cx="60" cy="60" r="${r}" stroke="#fff" stroke-width="10" fill="none" stroke-dasharray="${c}" stroke-dashoffset="${off}" stroke-linecap="round"/></svg>
+    <div class="ring-center"><div class="pct" style="color:#fff;">${pct}%</div><div class="lbl" style="color:#fff;opacity:.85;">إنجاز اليوم</div></div>`;
+}
+function renderDashMinis(){
+  const p = DATA.prayers[todayKey()]||{};
+  const names={fajr:'الفجر',dhuhr:'الظهر',asr:'العصر',maghrib:'المغرب',isha:'العشاء'};
+  document.getElementById('dashPrayerMini').innerHTML = Object.entries(names).map(([k,n])=>`
+    <div class="checkbox-row ${p[k]?.done?'done':''}" onclick="quickTogglePrayer('${k}')"><div class="chk">${p[k]?.done?'<i class=\"fa-solid fa-check\"></i>':''}</div><div class="grow">${n}</div></div>
+  `).join('');
+  const t = DATA.tasks.filter(x=>x.date===todayKey()).slice(0,5);
+  document.getElementById('dashTasksMini').innerHTML = t.length? t.map(x=>`
+    <div class="checkbox-row ${x.done?'done':''}" onclick="toggleTask('${x.id}')"><div class="chk">${x.done?'<i class=\"fa-solid fa-check\"></i>':''}</div><div class="grow">${x.title}</div></div>
+  `).join('') : `<div class="empty" style="padding:16px;"><i class="fa-solid fa-inbox"></i><div>مفيش مهام النهاردة</div></div>`;
+  const w = DATA.water.log[todayKey()]||0;
+  document.getElementById('dashWaterMini').innerHTML = `
+    <div style="text-align:center;">
+      <div style="font-size:30px;font-weight:800;color:#0EA5E9;">${w} <span style="font-size:14px;color:var(--text-dim);">/ ${DATA.water.goal}</span></div>
+      <div class="progress-bar" style="margin:10px 0;"><div class="fill" style="background:#0EA5E9;width:${Math.min(100,(w/DATA.water.goal)*100)}%"></div></div>
+      <button class="btn btn-primary btn-sm" onclick="addWater(1)"><i class="fa-solid fa-plus"></i> كوب مياه</button>
+    </div>`;
+}
+function quickTogglePrayer(k){
+  const t = todayKey();
+  if(!DATA.prayers[t]) DATA.prayers[t]={};
+  if(!DATA.prayers[t][k]) DATA.prayers[t][k]={done:false,mosque:false,sunnah:false,rating:0};
+  const wasDone = DATA.prayers[t][k].done;
+  DATA.prayers[t][k].done = !wasDone;
+  saveData();
+  if(!wasDone) addPoints(10); else renderTop();
+  renderPrayer();
+}
+
+/* ============== PRAYER ============== */
+const PRAYER_NAMES = {fajr:'الفجر', dhuhr:'الظهر', asr:'العصر', maghrib:'المغرب', isha:'العشاء'};
+function renderPrayer(){
+  const dateInput = document.getElementById('prayerDate');
+  if(!dateInput.value) dateInput.value = todayKey();
+  const d = dateInput.value;
+  if(!DATA.prayers[d]) DATA.prayers[d]={};
+  const p = DATA.prayers[d];
+  document.getElementById('prayerCards').innerHTML = Object.entries(PRAYER_NAMES).map(([k,n])=>{
+    if(!p[k]) p[k]={done:false,mosque:false,sunnah:false,rating:0};
+    const pr = p[k];
+    return `<div class="card" style="text-align:center;">
+      <div style="font-weight:800;margin-bottom:10px;">${n}</div>
+      <button class="btn ${pr.done?'btn-success':'btn-ghost'} btn-sm" style="width:100%;margin-bottom:8px;" onclick="togglePrayerField('${d}','${k}','done')"><i class="fa-solid fa-check"></i> ${pr.done?'تم':'لم تصلَّ'}</button>
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;margin-bottom:6px;"><input type="checkbox" ${pr.mosque?'checked':''} onchange="togglePrayerField('${d}','${k}','mosque')" style="width:auto;"> بالمسجد</label>
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;margin-bottom:6px;"><input type="checkbox" ${pr.sunnah?'checked':''} onchange="togglePrayerField('${d}','${k}','sunnah')" style="width:auto;"> السنة</label>
+      <div style="display:flex;justify-content:center;gap:2px;margin-top:6px;">
+        ${[1,2,3,4,5].map(n2=>`<i class="fa-${pr.rating>=n2?'solid':'regular'} fa-star" style="color:var(--warning);cursor:pointer;font-size:13px;" onclick="setPrayerRating('${d}','${k}',${n2})"></i>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
+  saveData();
+  // 30 day pct
+  const days=[]; for(let i=0;i<30;i++) days.push(todayKey(new Date(Date.now()-i*86400000)));
+  let totalSlots=0, doneSlots=0;
+  days.forEach(dk=>{ const pd=DATA.prayers[dk]; Object.keys(PRAYER_NAMES).forEach(k=>{ totalSlots++; if(pd && pd[k]?.done) doneSlots++; }); });
+  document.getElementById('prayerPct').textContent = totalSlots? Math.round((doneSlots/totalSlots)*100)+'%':'0%';
+  // streak of full days
+  let streak=0;
+  for(let i=0;i<365;i++){ const dk=todayKey(new Date(Date.now()-i*86400000)); const pd=DATA.prayers[dk]; if(pd && Object.keys(PRAYER_NAMES).every(k=>pd[k]?.done)) streak++; else break; }
+  document.getElementById('prayerStreak').textContent = streak;
+  renderPrayerChart();
+}
+function togglePrayerField(d,k,f){
+  const p = DATA.prayers[d][k];
+  p[f] = !p[f];
+  saveData();
+  if(f==='done' && p[f]) addPoints(10);
+  renderPrayer(); renderTop();
+}
+function setPrayerRating(d,k,n){ DATA.prayers[d][k].rating=n; saveData(); renderPrayer(); }
+let prayerChartInst;
+function renderPrayerChart(){
+  const ctx = document.getElementById('prayerChart');
+  const days=[]; for(let i=6;i>=0;i--) days.push(todayKey(new Date(Date.now()-i*86400000)));
+  const vals = days.map(dk=>{ const pd=DATA.prayers[dk]; if(!pd) return 0; return Object.keys(PRAYER_NAMES).filter(k=>pd[k]?.done).length; });
+  if(prayerChartInst) prayerChartInst.destroy();
+  prayerChartInst = new Chart(ctx, {type:'bar', data:{labels:days.map(d=>d.slice(5)), datasets:[{data:vals, backgroundColor:'#2563EB', borderRadius:6}]}, options:chartOpts(5)});
+}
+
+/* ============== QURAN ============== */
+function openQuranModal(){
+  openModal(`<h3>تسجيل قراءة اليوم <button class="icon-btn" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button></h3>
+    <div class="field"><label>عدد الصفحات</label><input type="number" id="qPages" placeholder="مثال: 4"></div>
+    <div class="field"><label>النوع</label><select id="qType"><option value="reading">تلاوة</option><option value="memorizing">حفظ</option><option value="review">مراجعة</option></select></div>
+    <button class="btn btn-primary" style="width:100%;" onclick="saveQuran()">حفظ</button>`);
+}
+function saveQuran(){
+  const pages = parseInt(document.getElementById('qPages').value)||0;
+  if(pages<=0){ toast('اكتب عدد صفحات صحيح','fa-triangle-exclamation','var(--danger)'); return; }
+  const t = todayKey();
+  DATA.quran.log[t] = (DATA.quran.log[t]||0) + pages;
+  saveData(); addPoints(pages*2); closeModal(); renderQuran();
+}
+function setQuranGoal(v){ DATA.quran.goal = parseInt(v)||1; saveData(); renderQuran(); }
+function renderQuran(){
+  document.getElementById('quranGoalInput').value = DATA.quran.goal;
+  const today = DATA.quran.log[todayKey()]||0;
+  document.getElementById('quranPages').textContent = today;
+  const total = Object.values(DATA.quran.log).reduce((a,b)=>a+b,0);
+  document.getElementById('quranTotalPages').textContent = total;
+  document.getElementById('quranGoalPct').textContent = Math.min(100, Math.round((today/DATA.quran.goal)*100))+'%';
+  const entries = Object.entries(DATA.quran.log).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,15);
+  document.getElementById('quranLog').innerHTML = entries.length? entries.map(([d,p])=>`
+    <div class="list-item"><div class="grow"><div class="title">${d}</div></div><span class="badge badge-primary">${p} صفحة</span></div>`).join('')
+    : `<div class="empty"><i class="fa-solid fa-book-quran"></i><div>لسه مفيش تسجيلات</div></div>`;
+}
+
+/* ============== ADHKAR ============== */
+const ADHKAR_ITEMS = [
+  {k:'morning', label:'أذكار الصباح', icon:'fa-sun'},
+  {k:'evening', label:'أذكار المساء', icon:'fa-moon'},
+  {k:'sleep', label:'أذكار النوم', icon:'fa-bed'},
+  {k:'afterPrayer', label:'أذكار بعد الصلاة', icon:'fa-mosque'},
+  {k:'istighfar', label:'الاستغفار', icon:'fa-hand-holding-heart'},
+  {k:'salawat', label:'الصلاة على النبي', icon:'fa-heart'},
+  {k:'dua', label:'الدعاء', icon:'fa-hands-praying'},
+];
+function renderAdhkar(){
+  const t = todayKey();
+  if(!DATA.adhkar[t]) DATA.adhkar[t]={};
+  const a = DATA.adhkar[t];
+  document.getElementById('adhkarList').innerHTML = ADHKAR_ITEMS.map(it=>`
+    <div class="checkbox-row ${a[it.k]?'done':''}" onclick="toggleAdhkar('${it.k}')"><div class="chk">${a[it.k]?'<i class=\"fa-solid fa-check\"></i>':''}</div><i class="fa-solid ${it.icon}" style="color:var(--primary);width:20px;"></i><div class="grow">${it.label}</div></div>
+  `).join('');
+}
+function toggleAdhkar(k){
+  const t = todayKey();
+  const wasDone = DATA.adhkar[t][k];
+  DATA.adhkar[t][k] = !wasDone;
+  saveData();
+  if(!wasDone) addPoints(5); else renderTop();
+  renderAdhkar();
+}
+
+/* ============== STUDY ============== */
+function openSubjectModal(){
+  openModal(`<h3>مادة دراسية جديدة <button class="icon-btn" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button></h3>
+    <div class="field"><label>اسم المادة</label><input type="text" id="subName"></div>
+    <div class="field"><label>لون</label><select id="subColor"><option value="#2563EB">أزرق</option><option value="#22C55E">أخضر</option><option value="#F59E0B">برتقالي</option><option value="#7C3AED">بنفسجي</option><option value="#EF4444">أحمر</option></select></div>
+    <button class="btn btn-primary" style="width:100%;" onclick="saveSubject()">حفظ</button>`);
+}
+function saveSubject(){
+  const name = document.getElementById('subName').value.trim();
+  if(!name) return;
+  DATA.study.subjects.push({id:'s'+Date.now(), name, color:document.getElementById('subColor').value, hours:0});
+  saveData(); closeModal(); renderStudy(); addPoints(5);
+}
+function deleteSubject(id){ DATA.study.subjects = DATA.study.subjects.filter(s=>s.id!==id); saveData(); renderStudy(); }
+function addStudyHours(id, h){
+  const s = DATA.study.subjects.find(x=>x.id===id); if(!s) return;
+  s.hours += h;
+  DATA.study.sessions.push({id:'ss'+Date.now(), subjectId:id, hours:h, date:todayKey()});
+  saveData(); addPoints(Math.round(h*10)); renderStudy();
+}
+function renderStudy(){
+  document.getElementById('studySubjectsCount').textContent = DATA.study.subjects.length;
+  const todaySessions = DATA.study.sessions.filter(s=>s.date===todayKey());
+  const hrs = todaySessions.reduce((a,b)=>a+b.hours,0);
+  document.getElementById('studyHoursToday').textContent = hrs.toFixed(1);
+  document.getElementById('subjectsList').innerHTML = DATA.study.subjects.length? DATA.study.subjects.map(s=>`
+    <div class="list-item">
+      <div style="width:10px;height:10px;border-radius:50%;background:${s.color};"></div>
+      <div class="grow"><div class="title">${s.name}</div><div class="sub">${s.hours.toFixed(1)} ساعة إجمالي</div></div>
+      <button class="btn btn-ghost btn-sm" onclick="addStudyHours('${s.id}',0.5)">+30د</button>
+      <button class="btn btn-ghost btn-sm" onclick="addStudyHours('${s.id}',1)">+1س</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteSubject('${s.id}')"><i class="fa-solid fa-trash"></i></button>
+    </div>`).join('') : `<div class="empty"><i class="fa-solid fa-book"></i><div>ضيف أول مادة دراسية</div></div>`;
+}
+let pomoInterval, pomoSeconds=25*60, pomoRunning=false;
+function togglePomodoro(){
+  pomoRunning = !pomoRunning;
+  document.getElementById('pomoLabel').textContent = pomoRunning? 'إيقاف':'بدء بومودورو';
+  if(pomoRunning){
+    pomoInterval = setInterval(()=>{
+      pomoSeconds--;
+      const m = Math.floor(pomoSeconds/60), s = pomoSeconds%60;
+      document.getElementById('pomoTimer').textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+      if(pomoSeconds<=0){ clearInterval(pomoInterval); pomoRunning=false; document.getElementById('pomoLabel').textContent='بدء بومودورو'; pomoSeconds=25*60; toast('🎉 خلصت جلسة بومودورو!','fa-clock','var(--primary)'); addPoints(15); }
+    },1000);
+  } else clearInterval(pomoInterval);
+}
+
+/* ============== TASKS ============== */
+let taskFilter='all';
+function openTaskModal(){
+  openModal(`<h3>مهمة جديدة <button class="icon-btn" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button></h3>
+    <div class="field"><label>عنوان المهمة</label><input type="text" id="tTitle"></div>
+    <div class="row2">
+      <div class="field"><label>الأولوية</label><select id="tPriority"><option value="low">منخفضة</option><option value="medium" selected>متوسطة</option><option value="high">عالية</option></select></div>
+      <div class="field"><label>التصنيف</label><input type="text" id="tCategory" placeholder="شغل / شخصي..."></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>تاريخ الاستحقاق</label><input type="date" id="tDate" value="${todayKey()}"></div>
+      <div class="field"><label>تكرار</label><select id="tRepeat"><option value="none">لا يوجد</option><option value="daily">يومي</option><option value="weekly">أسبوعي</option></select></div>
+    </div>
+    <button class="btn btn-primary" style="width:100%;" onclick="saveTask()">حفظ</button>`);
+}
+function saveTask(){
+  const title = document.getElementById('tTitle').value.trim();
+  if(!title) return;
+  DATA.tasks.push({id:'t'+Date.now(), title, priority:document.getElementById('tPriority').value, category:document.getElementById('tCategory').value, date:document.getElementById('tDate').value, repeat:document.getElementById('tRepeat').value, done:false});
+  saveData(); closeModal(); renderTasks(); renderTop();
+}
+function toggleTask(id){
+  const t = DATA.tasks.find(x=>x.id===id); if(!t) return;
+  t.done = !t.done; saveData();
+  if(t.done) addPoints(8); else renderTop();
+  renderTasks(); checkAchievements();
+}
+function deleteTask(id){ DATA.tasks = DATA.tasks.filter(x=>x.id!==id); saveData(); renderTasks(); renderTop(); }
+function setTaskFilter(f){ taskFilter=f; document.querySelectorAll('#taskFilterTabs .tab').forEach(t=>t.classList.toggle('active', t.dataset.f===f)); renderTasks(); }
+function renderTasks(){
+  let list = DATA.tasks.slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  if(taskFilter==='pending') list = list.filter(t=>!t.done);
+  if(taskFilter==='done') list = list.filter(t=>t.done);
+  const prioColor={low:'badge-primary',medium:'badge-warning',high:'badge-danger'};
+  const prioLabel={low:'منخفضة',medium:'متوسطة',high:'عالية'};
+  document.getElementById('tasksList').innerHTML = list.length? list.map(t=>`
+    <div class="list-item">
+      <div class="chk" style="cursor:pointer;${t.done?'background:var(--success);border-color:var(--success);color:#fff;':''}" onclick="toggleTask('${t.id}')">${t.done?'<i class=\"fa-solid fa-check\"></i>':''}</div>
+      <div class="grow"><div class="title" style="${t.done?'text-decoration:line-through;opacity:.6;':''}">${t.title}</div><div class="sub">${t.category||'عام'} • ${t.date||''}</div></div>
+      <span class="badge ${prioColor[t.priority]}">${prioLabel[t.priority]}</span>
+      <button class="btn btn-danger btn-sm" onclick="deleteTask('${t.id}')"><i class="fa-solid fa-trash"></i></button>
+    </div>`).join('') : `<div class="empty"><i class="fa-solid fa-list-check"></i><div>مفيش مهام هنا</div></div>`;
+}
+
+/* ============== GYM ============== */
+function openWorkoutModal(){
+  openModal(`<h3>تمرين جديد <button class="icon-btn" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button></h3>
+    <div class="field"><label>اسم التمرين</label><input type="text" id="wName"></div>
+    <div class="field"><label>العضلة المستهدفة</label><input type="text" id="wMuscle" placeholder="صدر، ظهر، رجل..."></div>
+    <div class="row2">
+      <div class="field"><label>عدد المجموعات</label><input type="number" id="wSets"></div>
+      <div class="field"><label>عدد التكرارات</label><input type="number" id="wReps"></div>
+    </div>
+    <div class="field"><label>الوزن المستخدم (كجم)</label><input type="number" id="wWeight"></div>
+    <button class="btn btn-primary" style="width:100%;" onclick="saveWorkout()">حفظ</button>`);
+}
+function saveWorkout(){
+  const name = document.getElementById('wName').value.trim(); if(!name) return;
+  DATA.gym.workouts.unshift({id:'w'+Date.now(), name, muscle:document.getElementById('wMuscle').value, sets:document.getElementById('wSets').value, reps:document.getElementById('wReps').value, weight:document.getElementById('wWeight').value, date:todayKey()});
+  saveData(); closeModal(); renderGym(); addPoints(12); checkAchievements();
+}
+function deleteWorkout(id){ DATA.gym.workouts = DATA.gym.workouts.filter(w=>w.id!==id); saveData(); renderGym(); }
+function openMeasurementModal(){
+  openModal(`<h3>تسجيل قياسات <button class="icon-btn" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button></h3>
+    <div class="row2">
+      <div class="field"><label>الوزن (كجم)</label><input type="number" id="mWeight"></div>
+      <div class="field"><label>الطول (سم)</label><input type="number" id="mHeight"></div>
+    </div>
+    <button class="btn btn-primary" style="width:100%;" onclick="saveMeasurement()">حفظ</button>`);
+}
+function saveMeasurement(){
+  const weight = parseFloat(document.getElementById('mWeight').value);
+  const height = parseFloat(document.getElementById('mHeight').value);
+  if(!weight) return;
+  DATA.gym.measurements.push({date:todayKey(), weight, height});
+  saveData(); closeModal(); renderGym(); addPoints(5);
+}
+let weightChartInst;
+function renderGym(){
+  document.getElementById('gymWorkoutsCount').textContent = DATA.gym.workouts.length;
+  const last = DATA.gym.measurements[DATA.gym.measurements.length-1];
+  document.getElementById('gymWeight').textContent = last? last.weight+' كجم':'--';
+  if(last && last.height){ const bmi = last.weight/((last.height/100)**2); document.getElementById('gymBMI').textContent = bmi.toFixed(1); }
+  document.getElementById('workoutsList').innerHTML = DATA.gym.workouts.length? DATA.gym.workouts.slice(0,10).map(w=>`
+    <div class="list-item"><div class="grow"><div class="title">${w.name}</div><div class="sub">${w.muscle||''} • ${w.sets||'-'}×${w.reps||'-'} • ${w.weight||'-'}كجم • ${w.date}</div></div>
+    <button class="btn btn-danger btn-sm" onclick="deleteWorkout('${w.id}')"><i class="fa-solid fa-trash"></i></button></div>`).join('')
+    : `<div class="empty"><i class="fa-solid fa-dumbbell"></i><div>سجّل أول تمرين ليك</div></div>`;
+  const ctx = document.getElementById('weightChart');
+  if(weightChartInst) weightChartInst.destroy();
+  weightChartInst = new Chart(ctx, {type:'line', data:{labels:DATA.gym.measurements.map(m=>m.date.slice(5)), datasets:[{data:DATA.gym.measurements.map(m=>m.weight), borderColor:'#EF4444', backgroundColor:'rgba(239,68,68,.1)', fill:true, tension:.3}]}, options:chartOpts()});
+}
+
+/* ============== NUTRITION ============== */
+function openMealModal(){
+  openModal(`<h3>إضافة وجبة <button class="icon-btn" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button></h3>
+    <div class="field"><label>اسم الوجبة</label><input type="text" id="mealName"></div>
+    <div class="row2">
+      <div class="field"><label>سعرات</label><input type="number" id="mealCal"></div>
+      <div class="field"><label>بروتين (جم)</label><input type="number" id="mealProtein"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>كارب (جم)</label><input type="number" id="mealCarb"></div>
+      <div class="field"><label>دهون (جم)</label><input type="number" id="mealFat"></div>
+    </div>
+    <button class="btn btn-primary" style="width:100%;" onclick="saveMeal()">حفظ</button>`);
+}
+function saveMeal(){
+  const name = document.getElementById('mealName').value.trim(); if(!name) return;
+  const t = todayKey();
+  if(!DATA.nutrition.log[t]) DATA.nutrition.log[t]={meals:[]};
+  DATA.nutrition.log[t].meals.push({name, cal:+document.getElementById('mealCal').value||0, protein:+document.getElementById('mealProtein').value||0, carb:+document.getElementById('mealCarb').value||0, fat:+document.getElementById('mealFat').value||0});
+  saveData(); closeModal(); renderNutrition(); addPoints(3);
+}
+function deleteMeal(i){ DATA.nutrition.log[todayKey()].meals.splice(i,1); saveData(); renderNutrition(); }
+function saveNutritionGoals(){
+  DATA.nutrition.goal = {cal:+document.getElementById('goalCal').value||2200, protein:+document.getElementById('goalProtein').value||150, carb:+document.getElementById('goalCarb').value||250, fat:+document.getElementById('goalFat').value||70};
+  saveData(); renderNutrition(); toast('اتحفظ الهدف');
+}
+function renderNutrition(){
+  const g = DATA.nutrition.goal;
+  document.getElementById('goalCal').value=g.cal; document.getElementById('goalProtein').value=g.protein; document.getElementById('goalCarb').value=g.carb; document.getElementById('goalFat').value=g.fat;
+  const meals = (DATA.nutrition.log[todayKey()]||{meals:[]}).meals;
+  const sum = k => meals.reduce((a,b)=>a+(b[k]||0),0);
+  const setStat = (id,fillId,val,goal)=>{ document.getElementById(id).textContent = `${val} / ${goal}`; document.getElementById(fillId).style.width = Math.min(100,(val/goal)*100)+'%'; };
+  setStat('nutCal','nutCalFill', sum('cal'), g.cal);
+  setStat('nutProtein','nutProteinFill', sum('protein'), g.protein);
+  setStat('nutCarb','nutCarbFill', sum('carb'), g.carb);
+  setStat('nutFat','nutFatFill', sum('fat'), g.fat);
+  document.getElementById('mealsList').innerHTML = meals.length? meals.map((m,i)=>`
+    <div class="list-item"><div class="grow"><div class="title">${m.name}</div><div class="sub">${m.cal} سعرة • بروتين ${m.protein} • كارب ${m.carb} • دهون ${m.fat}</div></div>
+    <button class="btn btn-danger btn-sm" onclick="deleteMeal(${i})"><i class="fa-solid fa-trash"></i></button></div>`).join('')
+    : `<div class="empty"><i class="fa-solid fa-utensils"></i><div>لسه مفيش وجبات مسجلة النهاردة</div></div>`;
+}
+
+/* ============== WATER ============== */
+function addWater(n){
+  const t = todayKey();
+  DATA.water.log[t] = Math.max(0, (DATA.water.log[t]||0)+n);
+  saveData();
+  if(n>0) addPoints(2);
+  renderWater(); renderTop();
+}
+function setWaterGoal(v){ DATA.water.goal = parseInt(v)||8; saveData(); renderWater(); }
+let waterChartInst;
+function renderWater(){
+  const t = todayKey();
+  const cnt = DATA.water.log[t]||0;
+  document.getElementById('waterCount').textContent = cnt;
+  document.getElementById('waterGoalTxt').textContent = DATA.water.goal;
+  document.getElementById('waterGoalInput').value = DATA.water.goal;
+  document.getElementById('waterFill').style.width = Math.min(100,(cnt/DATA.water.goal)*100)+'%';
+  const days=[]; for(let i=6;i>=0;i--) days.push(todayKey(new Date(Date.now()-i*86400000)));
+  const ctx = document.getElementById('waterChart');
+  if(waterChartInst) waterChartInst.destroy();
+  waterChartInst = new Chart(ctx, {type:'bar', data:{labels:days.map(d=>d.slice(5)), datasets:[{data:days.map(d=>DATA.water.log[d]||0), backgroundColor:'#0EA5E9', borderRadius:6}]}, options:chartOpts()});
+}
+
+/* ============== SLEEP ============== */
+function openSleepModal(){
+  openModal(`<h3>تسجيل نوم <button class="icon-btn" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button></h3>
+    <div class="row2">
+      <div class="field"><label>وقت النوم</label><input type="time" id="sBed"></div>
+      <div class="field"><label>وقت الاستيقاظ</label><input type="time" id="sWake"></div>
+    </div>
+    <div class="field"><label>جودة النوم (1-5)</label><input type="number" id="sQuality" min="1" max="5" value="3"></div>
+    <button class="btn btn-primary" style="width:100%;" onclick="saveSleep()">حفظ</button>`);
+}
+function saveSleep(){
+  const bed = document.getElementById('sBed').value, wake = document.getElementById('sWake').value;
+  if(!bed||!wake) return;
+  let h1=+bed.split(':')[0]+ +bed.split(':')[1]/60, h2=+wake.split(':')[0]+ +wake.split(':')[1]/60;
+  let hours = h2-h1; if(hours<0) hours+=24;
+  DATA.sleep.log.unshift({date:todayKey(), bed, wake, hours:+hours.toFixed(1), quality:+document.getElementById('sQuality').value||3});
+  saveData(); closeModal(); renderSleep(); addPoints(6);
+}
+let sleepChartInst;
+function renderSleep(){
+  const logs = DATA.sleep.log;
+  document.getElementById('sleepLogsCount').textContent = logs.length;
+  document.getElementById('sleepAvg').textContent = logs.length? (logs.reduce((a,b)=>a+b.hours,0)/logs.length).toFixed(1):'0';
+  document.getElementById('sleepQualityAvg').textContent = logs.length? (logs.reduce((a,b)=>a+b.quality,0)/logs.length).toFixed(1):'--';
+  document.getElementById('sleepLog').innerHTML = logs.slice(0,10).map(l=>`
+    <div class="list-item"><div class="grow"><div class="title">${l.date}</div><div class="sub">من ${l.bed} إلى ${l.wake}</div></div><span class="badge badge-purple">${l.hours} ساعة</span><span class="badge badge-warning">${l.quality}/5</span></div>`).join('')
+    || `<div class="empty"><i class="fa-solid fa-bed"></i><div>لسه مفيش تسجيلات نوم</div></div>`;
+  const rec = logs.slice(0,7).reverse();
+  const ctx = document.getElementById('sleepChart');
+  if(sleepChartInst) sleepChartInst.destroy();
+  sleepChartInst = new Chart(ctx, {type:'line', data:{labels:rec.map(l=>l.date.slice(5)), datasets:[{data:rec.map(l=>l.hours), borderColor:'#7C3AED', backgroundColor:'rgba(124,58,237,.1)', fill:true, tension:.3}]}, options:chartOpts()});
+}
+
+/* ============== HABITS ============== */
+function openHabitModal(){
+  openModal(`<h3>عادة جديدة <button class="icon-btn" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button></h3>
+    <div class="field"><label>اسم العادة</label><input type="text" id="hName"></div>
+    <div class="field"><label>التكرار</label><select id="hFreq"><option value="daily">يومي</option><option value="weekly">أسبوعي</option><option value="monthly">شهري</option></select></div>
+    <button class="btn btn-primary" style="width:100%;" onclick="saveHabit()">حفظ</button>`);
+}
+function saveHabit(){
+  const name = document.getElementById('hName').value.trim(); if(!name) return;
+  DATA.habits.push({id:'h'+Date.now(), name, freq:document.getElementById('hFreq').value, log:[], streak:0});
+  saveData(); closeModal(); renderHabits();
+}
+function deleteHabit(id){ DATA.habits = DATA.habits.filter(h=>h.id!==id); saveData(); renderHabits(); }
+function toggleHabitToday(id){
+  const h = DATA.habits.find(x=>x.id===id); const t = todayKey();
+  if(h.log.includes(t)){ h.log = h.log.filter(d=>d!==t); h.streak = Math.max(0,h.streak-1); }
+  else { h.log.push(t); h.streak++; addPoints(7); }
+  saveData(); renderHabits();
+}
+function renderHabits(){
+  const t = todayKey();
+  document.getElementById('habitsList').innerHTML = DATA.habits.length? DATA.habits.map(h=>{
+    const done = h.log.includes(t);
+    const freqLabel = {daily:'يومي', weekly:'أسبوعي', monthly:'شهري'}[h.freq];
+    return `<div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div><div class="title" style="font-weight:800;">${h.name}</div><span class="badge badge-primary">${freqLabel}</span></div>
+        <button class="btn btn-danger btn-sm" onclick="deleteHabit('${h.id}')"><i class="fa-solid fa-trash"></i></button>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px;">
+        <div class="stat-label"><i class="fa-solid fa-fire" style="color:var(--warning);"></i> ${h.streak} يوم متتالي</div>
+        <button class="btn ${done?'btn-success':'btn-primary'} btn-sm" onclick="toggleHabitToday('${h.id}')">${done?'تم اليوم':'تسجيل اليوم'}</button>
+      </div>
+    </div>`;
+  }).join('') : `<div class="empty" style="grid-column:1/-1;"><i class="fa-solid fa-rotate"></i><div>ضيف أول عادة عايز تتابعها</div></div>`;
+}
+
+/* ============== FINANCE ============== */
+let financeType='income';
+function openFinanceModal(type){
+  financeType = type;
+  openModal(`<h3>${type==='income'?'إضافة دخل':'إضافة مصروف'} <button class="icon-btn" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button></h3>
+    <div class="field"><label>الوصف</label><input type="text" id="fDesc"></div>
+    <div class="field"><label>المبلغ</label><input type="number" id="fAmount"></div>
+    ${type==='expense'?`<div class="field"><label>التصنيف</label><select id="fCategory"><option>أكل</option><option>مواصلات</option><option>فواتير</option><option>ترفيه</option><option>أخرى</option></select></div>`:''}
+    <button class="btn btn-primary" style="width:100%;" onclick="saveFinance()">حفظ</button>`);
+}
+function saveFinance(){
+  const desc = document.getElementById('fDesc').value.trim(); const amount = +document.getElementById('fAmount').value;
+  if(!desc||!amount) return;
+  DATA.finance.items.unshift({id:'f'+Date.now(), type:financeType, desc, amount, category:financeType==='expense'?document.getElementById('fCategory').value:'دخل', date:todayKey()});
+  saveData(); closeModal(); renderFinance(); addPoints(3);
+}
+function deleteFinance(id){ DATA.finance.items = DATA.finance.items.filter(f=>f.id!==id); saveData(); renderFinance(); }
+let financeChartInst;
+function renderFinance(){
+  const income = DATA.finance.items.filter(f=>f.type==='income').reduce((a,b)=>a+b.amount,0);
+  const expense = DATA.finance.items.filter(f=>f.type==='expense').reduce((a,b)=>a+b.amount,0);
+  document.getElementById('finIncome').textContent = income.toLocaleString();
+  document.getElementById('finExpense').textContent = expense.toLocaleString();
+  document.getElementById('finSaving').textContent = (income-expense).toLocaleString();
+  document.getElementById('financeList').innerHTML = DATA.finance.items.slice(0,10).map(f=>`
+    <div class="list-item"><div class="grow"><div class="title">${f.desc}</div><div class="sub">${f.category} • ${f.date}</div></div>
+    <span class="badge ${f.type==='income'?'badge-success':'badge-danger'}">${f.type==='income'?'+':'-'}${f.amount.toLocaleString()}</span>
+    <button class="btn btn-danger btn-sm" onclick="deleteFinance('${f.id}')"><i class="fa-solid fa-trash"></i></button></div>`).join('')
+    || `<div class="empty"><i class="fa-solid fa-wallet"></i><div>لسه مفيش حركات مالية</div></div>`;
+  const cats = {};
+  DATA.finance.items.filter(f=>f.type==='expense').forEach(f=>{ cats[f.category]=(cats[f.category]||0)+f.amount; });
+  const ctx = document.getElementById('financeChart');
+  if(financeChartInst) financeChartInst.destroy();
+  financeChartInst = new Chart(ctx, {type:'doughnut', data:{labels:Object.keys(cats), datasets:[{data:Object.values(cats), backgroundColor:['#EF4444','#F59E0B','#2563EB','#7C3AED','#22C55E']}]}, options:{plugins:{legend:{position:'bottom', labels:{color:getComputedStyle(document.body).color}}}}});
+}
+
+/* ============== MOOD ============== */
+function setMood(v){
+  const t = todayKey();
+  DATA.mood.log[t] = {val:v, note:document.getElementById('moodNote').value};
+  saveData(); addPoints(4); renderMood(); toast('اتسجلت حالتك النهاردة');
+}
+let moodChartInst;
+function renderMood(){
+  document.querySelectorAll('.mood-btn').forEach(b=>{
+    const isSel = DATA.mood.log[todayKey()]?.val == b.dataset.m;
+    b.style.background = isSel? 'var(--primary)':''; b.style.color = isSel? '#fff':'';
+  });
+  const days=[]; for(let i=13;i>=0;i--) days.push(todayKey(new Date(Date.now()-i*86400000)));
+  const ctx = document.getElementById('moodChart');
+  if(moodChartInst) moodChartInst.destroy();
+  moodChartInst = new Chart(ctx, {type:'line', data:{labels:days.map(d=>d.slice(5)), datasets:[{data:days.map(d=>DATA.mood.log[d]?.val||null), borderColor:'#F59E0B', backgroundColor:'rgba(245,158,11,.1)', fill:true, tension:.3, spanGaps:true}]}, options:Object.assign(chartOpts(5))});
+}
+
+/* ============== GOALS ============== */
+function openGoalModal(){
+  openModal(`<h3>هدف جديد <button class="icon-btn" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button></h3>
+    <div class="field"><label>عنوان الهدف</label><input type="text" id="gTitle"></div>
+    <div class="field"><label>النوع</label><select id="gType"><option value="short">قصير المدى</option><option value="medium">متوسط المدى</option><option value="long">طويل المدى</option></select></div>
+    <div class="field"><label>الموعد النهائي</label><input type="date" id="gDeadline"></div>
+    <button class="btn btn-primary" style="width:100%;" onclick="saveGoal()">حفظ</button>`);
+}
+function saveGoal(){
+  const title = document.getElementById('gTitle').value.trim(); if(!title) return;
+  DATA.goals.push({id:'g'+Date.now(), title, type:document.getElementById('gType').value, deadline:document.getElementById('gDeadline').value, progress:0});
+  saveData(); closeModal(); renderGoals();
+}
+function updateGoalProgress(id, delta){
+  const g = DATA.goals.find(x=>x.id===id);
+  g.progress = Math.min(100, Math.max(0, g.progress+delta));
+  saveData(); if(delta>0) addPoints(5); renderGoals();
+}
+function deleteGoal(id){ DATA.goals = DATA.goals.filter(g=>g.id!==id); saveData(); renderGoals(); }
+function renderGoals(){
+  const typeLabel={short:'قصير المدى', medium:'متوسط المدى', long:'طويل المدى'};
+  document.getElementById('goalsList').innerHTML = DATA.goals.length? DATA.goals.map(g=>`
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;"><span class="badge badge-purple">${typeLabel[g.type]}</span>
+      <button class="btn btn-danger btn-sm" onclick="deleteGoal('${g.id}')"><i class="fa-solid fa-trash"></i></button></div>
+      <div style="font-weight:800;margin:10px 0 6px;">${g.title}</div>
+      ${g.deadline?`<div class="sub" style="color:var(--text-dim);font-size:12px;margin-bottom:8px;"><i class="fa-solid fa-calendar"></i> ${g.deadline}</div>`:''}
+      <div class="progress-bar" style="margin-bottom:10px;"><div class="fill" style="width:${g.progress}%"></div></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span class="stat-label">${g.progress}%</span>
+        <div style="display:flex;gap:6px;"><button class="btn btn-ghost btn-sm" onclick="updateGoalProgress('${g.id}',-10)">-10%</button><button class="btn btn-primary btn-sm" onclick="updateGoalProgress('${g.id}',10)">+10%</button></div>
+      </div>
+    </div>`).join('') : `<div class="empty" style="grid-column:1/-1;"><i class="fa-solid fa-bullseye"></i><div>حدد أول هدف ليك</div></div>`;
+}
+
+/* ============== ACHIEVEMENTS ============== */
+function renderAchievements(){
+  document.getElementById('achList').innerHTML = DATA.achievements.map(a=>`
+    <div class="card" style="text-align:center; ${a.unlocked?'':'opacity:.45;'}">
+      <div style="width:56px;height:56px;border-radius:16px;background:${a.unlocked?'linear-gradient(135deg,var(--warning),#FBBF24)':'var(--bg)'};display:flex;align-items:center;justify-content:center;margin:0 auto 10px;font-size:22px;color:${a.unlocked?'#fff':'var(--text-dim)'};"><i class="fa-solid ${a.icon}"></i></div>
+      <div style="font-weight:800;font-size:13.5px;">${a.name}</div>
+      <div class="sub" style="margin-top:4px;">${a.desc}</div>
+    </div>`).join('');
+}
+
+/* ============== CHALLENGES ============== */
+function openChallengeModal(){
+  openModal(`<h3>تحدي جديد <button class="icon-btn" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button></h3>
+    <div class="field"><label>اسم التحدي</label><input type="text" id="chName"></div>
+    <div class="field"><label>عدد الأيام</label><input type="number" id="chDays" value="30"></div>
+    <button class="btn btn-primary" style="width:100%;" onclick="saveChallenge()">حفظ</button>`);
+}
+function saveChallenge(){
+  const name = document.getElementById('chName').value.trim(); if(!name) return;
+  DATA.challenges.push({id:'c'+Date.now(), name, totalDays:+document.getElementById('chDays').value||30, doneDays:0, startDate:todayKey()});
+  saveData(); closeModal(); renderChallenges();
+}
+function markChallengeDay(id){ const c = DATA.challenges.find(x=>x.id===id); if(c.doneDays<c.totalDays){ c.doneDays++; addPoints(10); } saveData(); renderChallenges(); }
+function deleteChallenge(id){ DATA.challenges = DATA.challenges.filter(c=>c.id!==id); saveData(); renderChallenges(); }
+function renderChallenges(){
+  document.getElementById('challengesList').innerHTML = DATA.challenges.length? DATA.challenges.map(c=>{
+    const pct = Math.round((c.doneDays/c.totalDays)*100);
+    return `<div class="card">
+      <div style="display:flex;justify-content:space-between;"><div style="font-weight:800;">${c.name}</div><button class="btn btn-danger btn-sm" onclick="deleteChallenge('${c.id}')"><i class="fa-solid fa-trash"></i></button></div>
+      <div class="sub" style="margin:6px 0 10px;">يوم ${c.doneDays} من ${c.totalDays}</div>
+      <div class="progress-bar" style="margin-bottom:12px;"><div class="fill" style="width:${pct}%"></div></div>
+      <button class="btn btn-primary btn-sm" style="width:100%;" onclick="markChallengeDay('${c.id}')" ${c.doneDays>=c.totalDays?'disabled':''}>${c.doneDays>=c.totalDays?'اكتمل 🎉':'تسجيل اليوم'}</button>
+    </div>`;
+  }).join('') : `<div class="empty" style="grid-column:1/-1;"><i class="fa-solid fa-flag-checkered"></i><div>ابدأ أول تحدي ليك</div></div>`;
+}
+
+/* ============== CALENDAR ============== */
+function openEventModal(){
+  openModal(`<h3>حدث جديد <button class="icon-btn" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button></h3>
+    <div class="field"><label>عنوان الحدث</label><input type="text" id="eTitle"></div>
+    <div class="field"><label>التاريخ</label><input type="date" id="eDate" value="${todayKey()}"></div>
+    <div class="field"><label>النوع</label><select id="eType"><option value="عام">عام</option><option value="دراسة">دراسة</option><option value="جيم">جيم</option><option value="صلاة">صلاة</option><option value="مهمة">مهمة</option></select></div>
+    <button class="btn btn-primary" style="width:100%;" onclick="saveEvent()">حفظ</button>`);
+}
+function saveEvent(){
+  const title = document.getElementById('eTitle').value.trim(); if(!title) return;
+  DATA.calendarEvents.push({id:'e'+Date.now(), title, date:document.getElementById('eDate').value, type:document.getElementById('eType').value});
+  saveData(); closeModal(); renderCalendar();
+}
+function deleteEvent(id){ DATA.calendarEvents = DATA.calendarEvents.filter(e=>e.id!==id); saveData(); renderCalendar(); }
+function renderCalendar(){
+  const sorted = DATA.calendarEvents.slice().sort((a,b)=>a.date.localeCompare(b.date));
+  document.getElementById('calendarList').innerHTML = sorted.length? sorted.map(e=>`
+    <div class="list-item"><div class="grow"><div class="title">${e.title}</div><div class="sub">${e.date}</div></div><span class="badge badge-primary">${e.type}</span>
+    <button class="btn btn-danger btn-sm" onclick="deleteEvent('${e.id}')"><i class="fa-solid fa-trash"></i></button></div>`).join('')
+    : `<div class="empty"><i class="fa-solid fa-calendar-days"></i><div>مفيش أحداث مسجلة</div></div>`;
+}
+
+/* ============== STATS ============== */
+let pointsChartInst, overviewChartInst;
+function renderStats(){
+  const days=[]; for(let i=6;i>=0;i--) days.push(todayKey(new Date(Date.now()-i*86400000)));
+  const ctx1 = document.getElementById('pointsChart');
+  if(pointsChartInst) pointsChartInst.destroy();
+  pointsChartInst = new Chart(ctx1, {type:'line', data:{labels:days.map(d=>d.slice(5)), datasets:[{data:days.map(()=>DATA.profile.points), borderColor:'#7C3AED', backgroundColor:'rgba(124,58,237,.1)', fill:true, tension:.3}]}, options:chartOpts()});
+  const prayerPct = document.getElementById('prayerPct')?.textContent?.replace('%','')||0;
+  const habitsAvg = DATA.habits.length? Math.round(DATA.habits.reduce((a,h)=>a+(h.log.includes(todayKey())?100:0),0)/DATA.habits.length):0;
+  const tasksToday = DATA.tasks.filter(t=>t.date===todayKey());
+  const tasksPct = tasksToday.length? Math.round((tasksToday.filter(t=>t.done).length/tasksToday.length)*100):0;
+  const ctx2 = document.getElementById('overviewChart');
+  if(overviewChartInst) overviewChartInst.destroy();
+  overviewChartInst = new Chart(ctx2, {type:'radar', data:{labels:['صلاة','مهام','عادات','دراسة','مياه'], datasets:[{data:[+prayerPct, tasksPct, habitsAvg, Math.min(100,(DATA.study.sessions.filter(s=>s.date===todayKey()).reduce((a,b)=>a+b.hours,0)/3)*100), Math.min(100,((DATA.water.log[todayKey()]||0)/DATA.water.goal)*100)], backgroundColor:'rgba(37,99,235,.2)', borderColor:'#2563EB'}]}, options:{scales:{r:{beginAtZero:true, max:100, ticks:{display:false}, grid:{color:getComputedStyle(document.body).getPropertyValue('--border')}, pointLabels:{color:getComputedStyle(document.body).color}}}, plugins:{legend:{display:false}}}});
+}
+
+function chartOpts(maxY){
+  return {plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true, max:maxY, grid:{color:getComputedStyle(document.body).getPropertyValue('--border')}, ticks:{color:getComputedStyle(document.body).color}}, x:{grid:{display:false}, ticks:{color:getComputedStyle(document.body).color}}}};
+}
+
+/* ============== PROFILE / SETTINGS ============== */
+function openProfileModal(){ goTo('settings'); }
+function saveProfile(){ DATA.profile.name = document.getElementById('profName').value||'صديقي'; saveData(); renderTop(); toast('اتحفظ الملف الشخصي'); }
+function exportData(){
+  const blob = new Blob([JSON.stringify(DATA,null,2)], {type:'application/json'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'lifeos-backup-'+todayKey()+'.json'; a.click();
+}
+function importData(e){
+  const file = e.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev=>{ try{ DATA = Object.assign(JSON.parse(JSON.stringify(DEFAULT_DATA)), JSON.parse(ev.target.result)); saveData(); renderAll(); toast('اتستوردت البيانات بنجاح'); }catch(err){ toast('فشل الاستيراد','fa-triangle-exclamation','var(--danger)'); } };
+  reader.readAsText(file);
+}
+function resetAllData(){
+  if(!confirm('متأكد إنك عايز تصفّر كل البيانات؟ الإجراء ده مش هيترجع.')) return;
+  DATA = JSON.parse(JSON.stringify(DEFAULT_DATA)); saveData(); renderAll(); toast('اتصفرت كل البيانات');
+}
+
+/* ============== SECTION RENDER DISPATCH ============== */
+function renderSection(id){
+  const map = {
+    dashboard: renderTop, prayer: renderPrayer, quran: renderQuran, adhkar: renderAdhkar,
+    study: renderStudy, tasks: renderTasks, gym: renderGym, nutrition: renderNutrition,
+    water: renderWater, sleep: renderSleep, habits: renderHabits, finance: renderFinance,
+    mood: renderMood, goals: renderGoals, achievements: renderAchievements, challenges: renderChallenges,
+    calendar: renderCalendar, stats: renderStats,
+    settings: ()=>{ document.getElementById('profName').value = DATA.profile.name; }
+  };
+  if(map[id]) map[id]();
+}
+function renderAll(){
+  buildNav(); initTheme(); renderTop();
+  document.getElementById('quranGoalInput').value = DATA.quran.goal;
+  document.getElementById('waterGoalInput').value = DATA.water.goal;
+  document.getElementById('profName').value = DATA.profile.name;
+  if(currentUser) document.getElementById('profEmail').value = currentUser.email;
+}
+
+/* ============== PWA: SERVICE WORKER + INSTALL PROMPT ============== */
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('service-worker.js').catch(()=>{});
+  });
+}
+let deferredInstallPrompt=null;
+window.addEventListener('beforeinstallprompt', e=>{
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  const btn = document.getElementById('installBtn');
+  if(btn) btn.style.display='inline-flex';
+});
+async function triggerInstall(){
+  if(!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  const {outcome} = await deferredInstallPrompt.userChoice;
+  if(outcome==='accepted') toast('جاري تثبيت التطبيق...','fa-arrow-down-to-line','var(--primary)');
+  deferredInstallPrompt=null;
+  document.getElementById('installBtn').style.display='none';
+}
+window.addEventListener('appinstalled', ()=>{
+  document.getElementById('installBtn').style.display='none';
+  toast('اتثبت التطبيق بنجاح 🎉','fa-circle-check','var(--success)');
+});
+
+/* ============== INIT ============== */
+buildNav();
+initTheme();
+setInterval(()=>{ document.getElementById('dateTimeText').textContent = new Date().toLocaleDateString('ar-EG',{weekday:'long', year:'numeric', month:'long', day:'numeric'}) + ' - ' + new Date().toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'}); }, 30000);
+document.getElementById('prayerDate').addEventListener('change', renderPrayer);
+boot();
+</script>
+</body>
+</html>
